@@ -106,6 +106,7 @@ private:
 public:
   container_axis() = default;
   ~container_axis() = default;
+
   container_axis(const container_type& edges): _edges(edges) {
     std::cout << "const container_type&" << std::endl;
   }
@@ -118,6 +119,28 @@ public:
   container_axis(container_axis&& axis): _edges(std::move(axis._edges)) {
     std::cout << "container_axis&&" << std::endl;
   }
+
+  container_axis& operator=(const container_type& edges) {
+    std::cout << "= const container_type&" << std::endl;
+    _edges = edges;
+    return *this;
+  }
+  container_axis& operator=(container_type&& edges) {
+    std::cout << "= container_type&&" << std::endl;
+    _edges = std::move(edges);
+    return *this;
+  }
+  container_axis& operator=(const container_axis& axis) {
+    std::cout << "= const container_axis&" << std::endl;
+    _edges = axis._edges;
+    return *this;
+  }
+  container_axis& operator=(container_axis&& axis) {
+    std::cout << "= container_axis&&" << std::endl;
+    _edges = std::move(axis._edges);
+    return *this;
+  }
+
   // container_axis(std::initializer_list<edge_type> edges): _edges(edges) {
   //   std::cout << "initializer_list" << std::endl;
   // }
@@ -173,6 +196,13 @@ public:
 
 template <typename T, axis_overflow Overflow = axis_overflow::both>
 class const_axis: public abstract_axis<T> {
+
+};
+
+// Uniform Axis =====================================================
+
+template <typename T, axis_overflow Overflow = axis_overflow::both>
+class uniform_axis: public abstract_axis<T> {
 
 };
 
