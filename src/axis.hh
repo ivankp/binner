@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <utility>
 #include <type_traits>
 #include <initializer_list>
 
@@ -103,8 +104,23 @@ private:
   container_type _edges;
 
 public:
-  container_axis(): _edges() { }
-  container_axis(std::initializer_list<edge_type> il): _edges(il) { }
+  container_axis() = default;
+  ~container_axis() = default;
+  container_axis(const container_type& edges): _edges(edges) {
+    std::cout << "const container_type&" << std::endl;
+  }
+  container_axis(container_type&& edges): _edges(std::move(edges)) {
+    std::cout << "container_type&&" << std::endl;
+  }
+  container_axis(const container_axis& axis): _edges(axis._edges) {
+    std::cout << "const container_axis&" << std::endl;
+  }
+  container_axis(container_axis&& axis): _edges(std::move(axis._edges)) {
+    std::cout << "container_axis&&" << std::endl;
+  }
+  // container_axis(std::initializer_list<edge_type> edges): _edges(edges) {
+  //   std::cout << "initializer_list" << std::endl;
+  // }
   // TODO: add all constructors
 
   inline axis_overflow overflow() _CNF { return Overflow; }
