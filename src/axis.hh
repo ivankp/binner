@@ -141,11 +141,6 @@ public:
     return *this;
   }
 
-  // container_axis(std::initializer_list<edge_type> edges): _edges(edges) {
-  //   std::cout << "initializer_list" << std::endl;
-  // }
-  // TODO: add all constructors
-
   inline axis_overflow overflow() _CNF { return Overflow; }
 
   inline size_type nedges() _CNFN(_edges.size()) { return _edges.size(); }
@@ -182,6 +177,7 @@ public:
     return std::distance(
       _edges.begin(), std::upper_bound(_edges.begin(), _edges.end(), x)
     ) - detail::overflow_offset<Overflow>::upper;
+    // output aligned but not necessarily in-range indices
     // binner desides what to do with out-of-range bins
   }
 
@@ -194,15 +190,58 @@ public:
 
 // Constexpr Axis ===================================================
 
-template <typename T, axis_overflow Overflow = axis_overflow::both>
-class const_axis: public abstract_axis<T> {
+template <typename EdgeType, axis_overflow Overflow = axis_overflow::both>
+class const_axis: public abstract_axis<EdgeType> {
 
 };
 
 // Uniform Axis =====================================================
 
-template <typename T, axis_overflow Overflow = axis_overflow::both>
-class uniform_axis: public abstract_axis<T> {
+template <typename EdgeType, axis_overflow Overflow = axis_overflow::both>
+class uniform_axis: public abstract_axis<EdgeType> {
+
+};
+
+// Shared Axis ======================================================
+
+template <typename EdgeType, typename Ref = const abstract_axis<EdgeType>*>
+class ref_axis: public abstract_axis<EdgeType> {
+public:
+  using base_type = abstract_axis<EdgeType>;
+  using size_type = typename base_type::size_type;
+  using edge_type = typename base_type::edge_type;
+  using axis_ref  = Ref;
+
+private:
+  axis_ref _ref;
+
+public:
+  ref_axis() = default;
+  ~ref_axis() = default;
+
+  ref_axis(axis_ref ref): _ref(ref) { }
+  ref_axis& operator=(axis_ref ref) {
+    _ref = ref;
+    return *this;
+  }
+
+  inline axis_overflow overflow() _CNF { return _ref->overflow(); }
+
+  inline size_type nedges() _CF { return _ref->nedges(); }
+  inline size_type nbins () _CF { return _ref->nbins (); }
+
+  inline size_type vfind_bin (edge_type x) _CF   { return _ref->vfind_bin(x); }
+  inline size_type  find_bin (edge_type x) const { return _ref->vfind_bin(x); }
+  inline size_type operator[](edge_type x) const { return _ref->vfind_bin(x); }
+
+  inline edge_type edge   (size_type i) _CF { return _ref->edge(i); }
+  inline edge_type edge_at(size_type i) _CF { return _ref->edge_at(i); }
+  inline edge_type lower() _CF { return _ref->lower(); }
+  inline edge_type lower(size_type bin) _CF { return _ref->lower(bin); }
+  inline edge_type lower_at(size_type bin) _CF { return _ref->lower_at(bin); }
+  inline edge_type upper() _CF { return _ref->upper(); }
+  inline edge_type upper(size_type bin) _CF { return _ref->upper(bin); }
+  inline edge_type upper_at(size_type bin) _CF { return _ref->upper_at(bin); }
 
 };
 

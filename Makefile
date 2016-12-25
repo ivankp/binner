@@ -16,7 +16,7 @@ $(TESTS): test/%: | .dep/%.d
 	g++ $(CXXFLAGS) $< -o $@ $(LIBS_$*)
 
 $(DEP): .dep/%.d: test/%.cc | .dep
-	g++ $(CXXFLAGS) -MM -MT '$(<:%.cc=%)' $< -MF $@
+	g++ -std=c++14 -Isrc -MM -MT '$(<:%.cc=%)' $< -MF $@
 
 $(ASM): %.s: test/%.cc
 	g++ -S -fverbose-asm $(CXXFLAGS) $< -o $@
