@@ -1,6 +1,7 @@
 TESTS := $(patsubst %.cc,%,$(wildcard test/*.cc))
 
 DEP := $(TESTS:test/%=.dep/%.d)
+ASM := $(TESTS:test/%=%.s)
 
 CXXFLAGS := -std=c++14 -Wall -O3 -Isrc -fmax-errors=3
 
@@ -16,6 +17,9 @@ $(TESTS): test/%: | .dep/%.d
 
 $(DEP): .dep/%.d: test/%.cc | .dep
 	g++ $(CXXFLAGS) -MM -MT '$(<:%.cc=%)' $< -MF $@
+
+$(ASM): %.s: test/%.cc
+	g++ -S -fverbose-asm $(CXXFLAGS) $< -o $@
 
 .dep:
 	mkdir $@
