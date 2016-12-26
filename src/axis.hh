@@ -18,6 +18,10 @@
 #error In __FILE__: cannot define macro _CNFN
 #endif
 #define _CNFN(expr) const noexcept(noexcept(expr)) final
+#ifdef _CNN
+#error In __FILE__: cannot define macro _CNN
+#endif
+#define _CNN(expr) const noexcept(noexcept(expr))
 
 namespace ivanp {
 
@@ -40,7 +44,7 @@ enum class axis_overflow {
 };
 
 namespace detail {
-  template <axis_overflow Overflow, typename SizeType=unsigned>
+  template <axis_overflow Overflow, typename SizeType>
   struct overflow_offset { };
 #define def_overflow_offset(T,N,L,U) \
   template <typename SizeType> \
@@ -87,6 +91,8 @@ public:
   virtual edge_type upper() const = 0;
   virtual edge_type upper(size_type bin) const = 0;
   virtual edge_type upper_at(size_type bin) const = 0;
+  inline edge_type min() const { return lower(); }
+  inline edge_type max() const { return upper(); }
 };
 
 // Container Axis ===================================================
@@ -150,6 +156,7 @@ public:
 
   inline edge_type edge   (size_type i) _CNF { return _edges[i]; }
   inline edge_type edge_at(size_type i) _CNFN(_edges.at(i)) {
+    // TODO: exceptions
     return _edges.at(i);
   }
   inline edge_type lower() _CNFN(_edges.front()) { return _edges.front(); }
@@ -157,7 +164,7 @@ public:
     return _edges[bin-detail::overflow_offset<Overflow,size_type>::lower];
   }
   inline edge_type lower_at(size_type bin) _CNFN(_edges.at(bin)) {
-    // TODO: better exceptions
+    // TODO: exceptions
     return _edges.at(bin-detail::overflow_offset<Overflow,size_type>::lower);
   }
   inline edge_type upper() _CNFN(_edges.back()) { return _edges.back(); }
@@ -165,26 +172,29 @@ public:
     return _edges[bin+detail::overflow_offset<Overflow,size_type>::upper];
   }
   inline edge_type upper_at(size_type bin) _CNFN(_edges.at(bin)) {
+    // TODO: exceptions
     return _edges.at(bin+detail::overflow_offset<Overflow,size_type>::upper);
   }
-
-  inline const container_type& edges() const { return _edges; }
-
-  inline size_type vfind_bin(edge_type x) _CF { return find_bin(x); }
+  inline edge_type min() _CNN(_edges.front()) { return _edges.front(); }
+  inline edge_type max() _CNN(_edges.back()) { return _edges.back(); }
 
   template <typename T>
   size_type find_bin(const T& x) const noexcept {
+    using diff_type = typename container_type::difference_type;
     return std::distance(
       _edges.begin(), std::upper_bound(_edges.begin(), _edges.end(), x)
-    ) - detail::overflow_offset<Overflow>::upper;
+    ) - detail::overflow_offset<Overflow,diff_type>::upper;
     // output aligned but not necessarily in-range indices
     // binner desides what to do with out-of-range bins
   }
+  inline size_type vfind_bin(edge_type x) _CF { return find_bin(x); }
 
   template <typename T>
   inline size_type operator[](const T& x) const noexcept {
     return find_bin(x);
   }
+
+  inline const container_type& edges() const { return _edges; }
 
 };
 
@@ -199,6 +209,77 @@ class const_axis: public abstract_axis<EdgeType> {
 
 template <typename EdgeType, axis_overflow Overflow = axis_overflow::both>
 class uniform_axis: public abstract_axis<EdgeType> {
+public:
+  using base_type = abstract_axis<EdgeType>;
+  using size_type = typename base_type::size_type;
+  using edge_type = typename base_type::edge_type;
+  static constexpr axis_overflow overflow_flag = Overflow;
+
+private:
+  size_type _nbins;
+  edge_type _min, _max;
+
+public:
+  uniform_axis() = default;
+  ~uniform_axis() = default;
+  uniform_axis(size_type nbins, edge_type min, edge_type max)
+  : _nbins(nbins), _min(min), _max(max) { }
+  uniform_axis(const uniform_axis& axis)
+  : _nbins(axis._nbins), _min(axis._min), _max(axis._max) { }
+  uniform_axis& operator=(const uniform_axis& axis) {
+    _nbins = axis._nbins;
+    _min = axis._min;
+    _max = axis._max;
+    return *this;
+  }
+
+  inline axis_overflow overflow() _CNF { return Overflow; }
+
+  inline size_type nbins () _CNF { return _nbins; }
+  inline size_type nedges() _CNF { return _nbins
+    - detail::overflow_offset<Overflow,size_type>::nbins;
+  }
+
+  inline edge_type edge(size_type i) _CNF {
+    // TODO: test
+    edge_type width = (_max - _min) / edge_type(_nbins);
+    return _min + i*width;
+  }
+  inline edge_type edge_at(size_type i) _CNF {
+    // TODO: exceptions
+    return edge(i);
+  }
+  inline edge_type lower() _CNF { return _min; }
+  inline edge_type lower(size_type bin) _CNF {
+    return edge(bin-detail::overflow_offset<Overflow,size_type>::lower);
+  }
+  inline edge_type lower_at(size_type bin) _CNF {
+    // TODO: exceptions
+    return lower(bin);
+  }
+  inline edge_type upper() _CNF { return _max; }
+  inline edge_type upper(size_type bin) _CNF {
+    return edge(bin-detail::overflow_offset<Overflow,size_type>::upper);
+  }
+  inline edge_type upper_at(size_type bin) _CNF {
+    // TODO: exceptions
+    return upper(bin);
+  }
+  inline edge_type min() const noexcept { return _min; }
+  inline edge_type max() const noexcept { return _max; }
+
+  inline size_type vfind_bin(edge_type x) _CF { return find_bin(x); }
+
+  template <typename T>
+  size_type find_bin(const T& x) const noexcept {
+    return size_type( _nbins*(x-_min)/(_max-_min) )
+      + detail::overflow_offset<Overflow,size_type>::upper;
+  }
+
+  template <typename T>
+  inline size_type operator[](const T& x) const noexcept {
+    return find_bin(x);
+  }
 
 };
 
@@ -222,6 +303,16 @@ public:
   ref_axis(axis_ref ref): _ref(ref) { }
   ref_axis& operator=(axis_ref ref) {
     _ref = ref;
+    return *this;
+  }
+  ref_axis(const ref_axis& axis): _ref(axis._ref) { }
+  ref_axis(ref_axis&& axis): _ref(std::move(axis._ref)) { }
+  ref_axis& operator=(const ref_axis& axis) {
+    _ref = axis._ref;
+    return *this;
+  }
+  ref_axis& operator=(ref_axis&& axis) {
+    _ref = std::move(axis._ref);
     return *this;
   }
 
@@ -250,4 +341,5 @@ public:
 
 #undef _CF
 #undef _CNF
+#undef _CNN
 #undef _CNFN
