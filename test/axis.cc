@@ -2,6 +2,7 @@
 #include <sstream>
 #include <vector>
 #include <array>
+#include <unordered_map>
 #include <cmath>
 #include <cstdlib>
 
@@ -81,44 +82,60 @@ int main(int argc, char* argv[])
 
   {
   const unsigned nbins = 101;
-  ivanp::uniform_axis<double> a(nbins,M_1_PI,M_PI);
+  ivanp::uniform_axis<double> a(nbins,-M_1_PI,537*M_PI);
   test(a.min())
   // test_cmp(hex(a4.min()),hex(M_1_PI))
   test(a.max())
   // test_cmp(hex(a4.max()),hex(M_PI))
   // test_cmp(hex(a4.edge(0)),hex(M_1_PI))
   test_cmp(a[a.min()],1)
-  test_cmp(a[0],0)
-  test_cmp(a[a.max()],102)
-  test_cmp(a[4],nbins+1)
+  test_cmp(a[a.min()-100.],0)
+  test_cmp(a[a.max()],nbins+1)
+  test_cmp(a[a.max()+100.],nbins+1)
 
   BR
-  // for (unsigned i=1; i)
-  const unsigned ie = 57;
-  // const unsigned ie = atoi(argv[1]);
-  const auto edge = a.edge(ie);
-  // const auto edge_next = std::nextafter(edge,edge+1);
-  // const auto edge_prev = std::nextafter(edge,edge-1);
-  const auto edge_next = next<1>(edge);
-  const auto edge_prev = prev<1>(edge);
-  const auto prec_pow = std::pow(10,
-    cout.precision() - int(std::log10(std::abs(edge))) - 1);
-  auto edge_trunc = std::trunc(edge*prec_pow);
-  auto edge_trunc_next = (edge_trunc+1)/prec_pow;
-  edge_trunc /= prec_pow;
+  std::unordered_map<int,int> epsilons;
+  for (unsigned i=0; i<nbins+1; ++i) {
+    auto x = a./*exact_*/edge(i);
+    const auto j = a[x]-1;
 
-  test(edge)
-  test(edge_trunc)
-  test(edge_trunc_next)
-  test_cmp(a[edge_trunc],ie)
-  test_cmp(a[edge_trunc_next],ie+1)
+    int n = (j < i ? -1 : 0);
+    if (j < i) for ( ; a[x = next<1>(x)] <  i+1; ) --n;
+    else       for ( ; a[x = prev<1>(x)] == i+1; ) ++n;
+  
+    /*if (n) {
+      cout << "Edge " << i;
+      if (j < i) cout << " behind";
+      else       cout << " ahead";
+      cout << " by " << n << endl;
+    }*/
+    ++epsilons[n];
+  }
+  for (auto& e : epsilons) cout << e.first << ": " << e.second << endl;
+  BR
 
-  test(hex(edge_prev))
-  test(hex(edge))
-  test(hex(edge_next))
-  test_cmp(a[edge_prev],ie)
-  test_cmp(a[edge],ie+1)
-  test_cmp(a[edge_next],ie+1)
+  // const unsigned ie = 1;
+  // const auto edge = a.edge(ie);
+  // const auto edge_next = next<1>(edge);
+  // const auto edge_prev = prev<1>(edge);
+  // const auto prec_pow = std::pow(10,
+  //   cout.precision() - int(std::log10(std::abs(edge))) - 1);
+  // auto edge_trunc = std::trunc(edge*prec_pow);
+  // auto edge_trunc_next = (edge_trunc+1)/prec_pow;
+  // edge_trunc /= prec_pow;
+  //
+  // test(edge)
+  // test(edge_trunc)
+  // test(edge_trunc_next)
+  // test_cmp(a[edge_trunc],ie)
+  // test_cmp(a[edge_trunc_next],ie+1)
+  //
+  // test(hex(edge_prev))
+  // test(hex(edge))
+  // test(hex(edge_next))
+  // test_cmp(a[edge_prev],ie)
+  // test_cmp(a[edge],ie+1)
+  // test_cmp(a[edge_next],ie+1)
   }
 
   return 0;

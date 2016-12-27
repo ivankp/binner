@@ -2,6 +2,7 @@
 #define IVANP_AXIS_HH
 
 #include <algorithm>
+#include <cmath>
 #include <utility>
 #include <stdexcept>
 #include <sstream>
@@ -217,7 +218,26 @@ public:
     return find_bin(x);
   }
 
-  // TODO: exact edge calculation
+  // exact edge calculation
+  edge_type exact_edge(size_type i) const noexcept {
+    auto x = edge(i);
+    const auto j = find_bin(x);
+    const auto i1 = i + 1;
+    
+    if (j < i1) {
+      for ( ; find_bin(x = std::nextafter(x,x+1)) < i1; );
+    } else {
+      auto x2 = x;
+      for ( ; find_bin(x2 = std::nextafter(x2,x2-1)) == i1; ) x = x2;
+    }
+    return x;
+  }
+  inline edge_ltype exact_lower(size_type bin) const noexcept {
+    return exact_edge(bin-1);
+  }
+  inline edge_ltype exact_upper(size_type bin) const noexcept {
+    return exact_edge(bin);
+  }
 
 };
 
