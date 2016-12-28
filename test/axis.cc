@@ -96,6 +96,7 @@ int main(int argc, char* argv[])
   auto a = ivanp::make_axis(nbins,-M_1_PI,537*M_PI);
   print_type<decltype(a)>();
 
+  test( a[3.7] )
   test(a.min())
   // test_cmp(hex(a4.min()),hex(M_1_PI))
   test(a.max())
