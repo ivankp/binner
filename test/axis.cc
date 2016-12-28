@@ -6,6 +6,8 @@
 #include <cmath>
 #include <cstdlib>
 
+#include <boost/type_index.hpp>
+
 #define test(var) \
   std::cout << "\033[36m" << #var << "\033[0m = " << var << std::endl;
 #define test_cmp(var,val) \
@@ -13,11 +15,18 @@
             << ((var)==val ? "\033[32m✔" : "\033[31m✘" ) << "\033[0m" \
             << std::endl;
 #define section(name) \
-  std::cout << "\n\033[1;35m" name "\033[0m" << std::endl;
+  std::cout << "\n\033[1;35m" << name << "\033[0m" << std::endl;
 #define BR std::cout << std::endl;
 
 using std::cout;
 using std::endl;
+
+template <typename T>
+void print_type() {
+  std::cout << "\033[1;35m"
+    << boost::typeindex::type_id<T>().pretty_name()
+    << "\033[0m" << std::endl;
+}
 
 #include "axis.hh"
 
@@ -58,31 +67,35 @@ int main(int argc, char* argv[])
 {
   cout << std::boolalpha;
 
-  section("container_axis") // ======================================
-
+  // ================================================================
+  BR
   ivanp::container_axis<std::vector<int>> a1({1,2,3,4});
-  ivanp::container_axis<std::vector<int>> a2 = a1;
+  print_type<decltype(a1)>();
+
+  // ivanp::container_axis<std::vector<int>> a2 = a1;
   // ivanp::container_axis<std::array<double,4>> a1({1.,2.,3.,4.});
 
-  test_cmp( sizeof(a2), (sizeof(std::vector<int>)+sizeof(void*)) )
-  test_cmp( a2[0.5], 0 )
-  test_cmp( a2[2.5], 2 )
-  test_cmp( a2[4.5], 4 )
-  test_cmp( a2.min(), 1 )
-  test_cmp( a2.max(), 4 )
+  test_cmp( sizeof(a1), (sizeof(std::vector<int>)+sizeof(void*)) )
+  test_cmp( a1[0.5], 0 )
+  test_cmp( a1[2.5], 2 )
+  test_cmp( a1[4.5], 4 )
+  test_cmp( a1.min(), 1 )
+  test_cmp( a1.max(), 4 )
 
-  section("ref_axis") // ============================================
-
+  // ================================================================
+  BR
   ivanp::ref_axis<int> a3(&a1);
+  print_type<decltype(a3)>();
 
   test_cmp( sizeof(a3), (2*sizeof(void*)) )
   test_cmp( a3[3.7], 3 )
 
-  section("uniform_axis") // ========================================
-
-  {
+  { // ==============================================================
+  BR
   const unsigned nbins = 101;
-  ivanp::uniform_axis<double> a(nbins,-M_1_PI,537*M_PI);
+  auto a = ivanp::make_axis(nbins,-M_1_PI,537*M_PI);
+  print_type<decltype(a)>();
+
   test(a.min())
   // test_cmp(hex(a4.min()),hex(M_1_PI))
   test(a.max())
@@ -111,6 +124,7 @@ int main(int argc, char* argv[])
     }*/
     ++epsilons[n];
   }
+  cout << "ϵ deviations from true edges" << endl;
   for (auto& e : epsilons) cout << e.first << ": " << e.second << endl;
   BR
 

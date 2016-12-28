@@ -6,6 +6,7 @@
 #include <utility>
 #include <stdexcept>
 #include <sstream>
+#include <memory>
 
 #include "type_traits.hh"
 
@@ -37,10 +38,12 @@ namespace ivanp {
 
 // Abstract Axis ====================================================
 
+using axis_size_type = unsigned;
+
 template <typename EdgeType>
 class abstract_axis {
 public:
-  using size_type = unsigned;
+  using size_type = axis_size_type;
   using edge_type = EdgeType;
   using edge_ltype = const_ref_if_not_scalar_t<edge_type>;
 
@@ -91,36 +94,26 @@ public:
   container_axis() = default;
   ~container_axis() = default;
 
-  container_axis(const container_type& edges): _edges(edges) {
-    std::cout << "const container_type&" << std::endl;
-  }
-  container_axis(container_type&& edges): _edges(std::move(edges)) {
-    std::cout << "container_type&&" << std::endl;
-  }
-  container_axis(const container_axis& axis): _edges(axis._edges) {
-    std::cout << "const container_axis&" << std::endl;
-  }
-  container_axis(container_axis&& axis): _edges(std::move(axis._edges)) {
-    std::cout << "container_axis&&" << std::endl;
-  }
+  container_axis(const container_type& edges): _edges(edges) { }
+  container_axis(container_type&& edges): _edges(std::move(edges)) { }
+  container_axis(const container_axis& axis): _edges(axis._edges) { }
+  container_axis(container_axis&& axis): _edges(std::move(axis._edges)) { }
+  template <typename T>
+  container_axis(std::initializer_list<T> edges): _edges(edges) { }
 
   container_axis& operator=(const container_type& edges) {
-    std::cout << "= const container_type&" << std::endl;
     _edges = edges;
     return *this;
   }
   container_axis& operator=(container_type&& edges) {
-    std::cout << "= container_type&&" << std::endl;
     _edges = std::move(edges);
     return *this;
   }
   container_axis& operator=(const container_axis& axis) {
-    std::cout << "= const container_axis&" << std::endl;
     _edges = axis._edges;
     return *this;
   }
   container_axis& operator=(container_axis&& axis) {
-    std::cout << "= container_axis&&" << std::endl;
     _edges = std::move(axis._edges);
     return *this;
   }
@@ -179,7 +172,7 @@ public:
   uniform_axis() = default;
   ~uniform_axis() = default;
   uniform_axis(size_type nbins, edge_ltype min, edge_ltype max)
-  : _nbins(nbins), _min(min), _max(max) { }
+  : _nbins(nbins), _min(std::min(min,max)), _max(std::max(min,max)) { }
   uniform_axis(const uniform_axis& axis)
   : _nbins(axis._nbins), _min(axis._min), _max(axis._max) { }
   uniform_axis& operator=(const uniform_axis& axis) {
@@ -289,6 +282,52 @@ public:
   inline edge_ltype upper(size_type bin) _CF { return _ref->upper(bin); }
 
 };
+
+// Factory functions ================================================
+
+template <typename A, typename B, typename EdgeType = std::common_type_t<A,B>>
+inline decltype(auto) make_axis(axis_size_type nbins, A min, B max) {
+  return uniform_axis<EdgeType>(nbins,min,max);
+}
+
+template <typename T, size_t N>
+inline decltype(auto) make_axis(const std::array<T,N>& edges) {
+  return container_axis<std::array<T,N>>(edges);
+}
+
+template <typename EdgeType>
+inline decltype(auto) make_unique_axis(const abstract_axis<EdgeType>* axis) {
+  return ref_axis<EdgeType,std::unique_ptr<abstract_axis<EdgeType>>>(axis);
+}
+
+template <typename EdgeType>
+inline decltype(auto) make_shared_axis(const abstract_axis<EdgeType>* axis) {
+  return ref_axis<EdgeType,std::shared_ptr<abstract_axis<EdgeType>>>(axis);
+}
+
+template <typename A, typename B, typename EdgeType = std::common_type_t<A,B>>
+inline decltype(auto) make_unique_axis(axis_size_type nbins, A min, B max) {
+  return ref_axis<EdgeType,std::unique_ptr<abstract_axis<EdgeType>>>(
+    std::make_unique<uniform_axis<EdgeType>>(nbins,min,max) );
+}
+
+template <typename A, typename B, typename EdgeType = std::common_type_t<A,B>>
+inline decltype(auto) make_shared_axis(axis_size_type nbins, A min, B max) {
+  return ref_axis<EdgeType,std::shared_ptr<abstract_axis<EdgeType>>>(
+    std::make_shared<uniform_axis<EdgeType>>(nbins,min,max) );
+}
+
+template <typename T, size_t N>
+inline decltype(auto) make_unique_axis(const std::array<T,N>& edges) {
+  return ref_axis<T,std::unique_ptr<abstract_axis<T>>>(
+    std::make_unique<uniform_axis<T>>(edges) );
+}
+
+template <typename T, size_t N>
+inline decltype(auto) make_shared_axis(const std::array<T,N>& edges) {
+  return ref_axis<T,std::shared_ptr<abstract_axis<T>>>(
+    std::make_shared<uniform_axis<T>>(edges) );
+}
 
 // ==================================================================
 } // end namespace ivanp
