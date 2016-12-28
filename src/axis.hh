@@ -131,6 +131,7 @@ public:
 
   template <typename T>
   size_type find_bin(const T& x) const noexcept {
+    test(x) // TODO: called twice!!! <---------
     return std::distance(
       _edges.begin(), std::upper_bound(_edges.begin(), _edges.end(), x)
     );
@@ -139,7 +140,6 @@ public:
 
   template <typename T>
   inline size_type operator[](const T& x) const noexcept {
-    test(x) // TODO: called twice!!! <---------
     return find_bin(x);
   }
 
@@ -186,7 +186,6 @@ public:
   inline size_type nedges() _CNF { return _nbins+1; }
 
   inline edge_ltype edge(size_type i) _CNF {
-    // TODO: test
     const auto width = (_max - _min)/_nbins;
     return _min + i*width;
   }
