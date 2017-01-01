@@ -45,18 +45,18 @@ class abstract_axis {
 public:
   using size_type = axis_size_type;
   using edge_type = EdgeType;
-  using edge_ltype = const_ref_if_not_scalar_t<edge_type>;
+  using edge_cref = const_ref_if_not_scalar_t<edge_type>;
 
   virtual size_type nbins () const = 0;
   virtual size_type nedges() const = 0;
 
-  virtual size_type vfind_bin(edge_ltype x) const = 0;
+  virtual size_type vfind_bin(edge_cref x) const = 0;
 
-  virtual edge_ltype edge(size_type i) const = 0;
-  virtual edge_ltype min() const = 0;
-  virtual edge_ltype max() const = 0;
-  virtual edge_ltype lower(size_type bin) const = 0;
-  virtual edge_ltype upper(size_type bin) const = 0;
+  virtual edge_cref edge(size_type i) const = 0;
+  virtual edge_cref min() const = 0;
+  virtual edge_cref max() const = 0;
+  virtual edge_cref lower(size_type bin) const = 0;
+  virtual edge_cref upper(size_type bin) const = 0;
 
   inline bool check_edge(size_type i) const { return (i < nedges()); }
   inline void check_edge_throw(size_type i) const {
@@ -84,7 +84,7 @@ public:
   using base_type = abstract_axis<typename Container::value_type>;
   using size_type = typename base_type::size_type;
   using edge_type = typename base_type::edge_type;
-  using edge_ltype = typename base_type::edge_ltype;
+  using edge_cref = typename base_type::edge_cref;
   using container_type = Container;
 
 private:
@@ -121,13 +121,13 @@ public:
   inline size_type nedges() _CNFN(_edges.size()) { return _edges.size(); }
   inline size_type nbins () _CNFN(_edges.size()) { return _edges.size()-1; }
 
-  inline edge_ltype edge(size_type i) _CNF { return _edges[i]; }
+  inline edge_cref edge(size_type i) _CNF { return _edges[i]; }
 
-  inline edge_ltype min() _CNN(_edges.front()) { return _edges.front(); }
-  inline edge_ltype max() _CNN(_edges.back()) { return _edges.back(); }
+  inline edge_cref min() _CNN(_edges.front()) { return _edges.front(); }
+  inline edge_cref max() _CNN(_edges.back()) { return _edges.back(); }
 
-  inline edge_ltype lower(size_type bin) _CNF { return _edges[bin-1]; }
-  inline edge_ltype upper(size_type bin) _CNF { return _edges[bin]; }
+  inline edge_cref lower(size_type bin) _CNF { return _edges[bin-1]; }
+  inline edge_cref upper(size_type bin) _CNF { return _edges[bin]; }
 
   template <typename T>
   size_type find_bin(const T& x) const noexcept {
@@ -136,7 +136,7 @@ public:
       _edges.begin(), std::upper_bound(_edges.begin(), _edges.end(), x)
     );
   }
-  inline size_type vfind_bin(edge_ltype x) _CF { return find_bin(x); }
+  inline size_type vfind_bin(edge_cref x) _CF { return find_bin(x); }
 
   template <typename T>
   inline size_type operator[](const T& x) const noexcept {
@@ -149,8 +149,16 @@ public:
 
 // Constexpr Axis ===================================================
 
-template <typename EdgeType>
+template <typename EdgeType, unsigned N>
 class const_axis: public abstract_axis<EdgeType> {
+public:
+  using base_type = abstract_axis<EdgeType>;
+  using size_type = typename base_type::size_type;
+  using edge_type = typename base_type::edge_type;
+  using edge_cref = typename base_type::edge_cref;
+
+private:
+  // const edge_type [N+1];
 
 };
 
@@ -162,7 +170,7 @@ public:
   using base_type = abstract_axis<EdgeType>;
   using size_type = typename base_type::size_type;
   using edge_type = typename base_type::edge_type;
-  using edge_ltype = typename base_type::edge_ltype;
+  using edge_cref = typename base_type::edge_cref;
 
 private:
   size_type _nbins;
@@ -171,7 +179,7 @@ private:
 public:
   uniform_axis() = default;
   ~uniform_axis() = default;
-  uniform_axis(size_type nbins, edge_ltype min, edge_ltype max)
+  uniform_axis(size_type nbins, edge_cref min, edge_cref max)
   : _nbins(nbins), _min(std::min(min,max)), _max(std::max(min,max)) { }
   uniform_axis(const uniform_axis& axis)
   : _nbins(axis._nbins), _min(axis._min), _max(axis._max) { }
@@ -185,16 +193,16 @@ public:
   inline size_type nbins () _CNF { return _nbins; }
   inline size_type nedges() _CNF { return _nbins+1; }
 
-  inline edge_ltype edge(size_type i) _CNF {
+  inline edge_cref edge(size_type i) _CNF {
     const auto width = (_max - _min)/_nbins;
     return _min + i*width;
   }
 
-  inline edge_ltype min() const noexcept { return _min; }
-  inline edge_ltype max() const noexcept { return _max; }
+  inline edge_cref min() const noexcept { return _min; }
+  inline edge_cref max() const noexcept { return _max; }
 
-  inline edge_ltype lower(size_type bin) _CNF { return edge(bin-1); }
-  inline edge_ltype upper(size_type bin) _CNF { return edge(bin); }
+  inline edge_cref lower(size_type bin) _CNF { return edge(bin-1); }
+  inline edge_cref upper(size_type bin) _CNF { return edge(bin); }
 
   template <typename T>
   size_type find_bin(const T& x) const noexcept {
@@ -203,7 +211,7 @@ public:
     return _nbins*(x-_min)/(_max-_min) + 1;
   }
 
-  inline size_type vfind_bin(edge_ltype x) _CNF { return find_bin(x); }
+  inline size_type vfind_bin(edge_cref x) _CNF { return find_bin(x); }
 
   template <typename T>
   inline size_type operator[](const T& x) const noexcept {
@@ -224,16 +232,16 @@ public:
     }
     return x;
   }
-  inline edge_ltype exact_lower(size_type bin) const noexcept {
+  inline edge_cref exact_lower(size_type bin) const noexcept {
     return exact_edge(bin-1);
   }
-  inline edge_ltype exact_upper(size_type bin) const noexcept {
+  inline edge_cref exact_upper(size_type bin) const noexcept {
     return exact_edge(bin);
   }
 
 };
 
-// Shared Axis ======================================================
+// Indirect Axis ====================================================
 
 template <typename EdgeType, typename Ref = const abstract_axis<EdgeType>*>
 class ref_axis: public abstract_axis<EdgeType> {
@@ -241,7 +249,7 @@ public:
   using base_type = abstract_axis<EdgeType>;
   using size_type = typename base_type::size_type;
   using edge_type = typename base_type::edge_type;
-  using edge_ltype = typename base_type::edge_ltype;
+  using edge_cref = typename base_type::edge_cref;
   using axis_ref  = Ref;
 
 private:
@@ -270,15 +278,15 @@ public:
   inline size_type nedges() _CF { return _ref->nedges(); }
   inline size_type nbins () _CF { return _ref->nbins (); }
 
-  inline size_type vfind_bin (edge_ltype x) _CF   { return _ref->vfind_bin(x); }
-  inline size_type  find_bin (edge_ltype x) const { return _ref->vfind_bin(x); }
-  inline size_type operator[](edge_ltype x) const { return _ref->vfind_bin(x); }
+  inline size_type vfind_bin (edge_cref x) _CF   { return _ref->vfind_bin(x); }
+  inline size_type  find_bin (edge_cref x) const { return _ref->vfind_bin(x); }
+  inline size_type operator[](edge_cref x) const { return _ref->vfind_bin(x); }
 
-  inline edge_ltype edge(size_type i) _CF { return _ref->edge(i); }
-  inline edge_ltype min() _CF { return _ref->min(); }
-  inline edge_ltype max() _CF { return _ref->max(); }
-  inline edge_ltype lower(size_type bin) _CF { return _ref->lower(bin); }
-  inline edge_ltype upper(size_type bin) _CF { return _ref->upper(bin); }
+  inline edge_cref edge(size_type i) _CF { return _ref->edge(i); }
+  inline edge_cref min() _CF { return _ref->min(); }
+  inline edge_cref max() _CF { return _ref->max(); }
+  inline edge_cref lower(size_type bin) _CF { return _ref->lower(bin); }
+  inline edge_cref upper(size_type bin) _CF { return _ref->upper(bin); }
 
 };
 
