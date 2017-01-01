@@ -10,10 +10,11 @@
 
 #define test(var) \
   std::cout << "\033[36m" << #var << "\033[0m = " << var << std::endl;
-#define test_cmp(var,val) \
-  std::cout << "\033[36m" << #var << "\033[0m = " << var << ' ' \
-            << ((var)==val ? "\033[32m✔" : "\033[31m✘" ) << "\033[0m" \
-            << std::endl;
+#define test_cmp(var,val) { \
+  const auto x = var; \
+  std::cout << "\033[36m" << #var << "\033[0m = " << x << ' ' \
+            << (x==val ? "\033[32m✔" : "\033[31m✘" ) << "\033[0m" \
+            << std::endl; }
 #define section(name) \
   std::cout << "\n\033[1;35m" << name << "\033[0m" << std::endl;
 #define BR std::cout << std::endl;

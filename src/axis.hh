@@ -131,7 +131,6 @@ public:
 
   template <typename T>
   size_type find_bin(const T& x) const noexcept {
-    test(x) // TODO: called twice!!! <---------
     return std::distance(
       _edges.begin(), std::upper_bound(_edges.begin(), _edges.end(), x)
     );
