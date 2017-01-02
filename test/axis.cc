@@ -154,5 +154,19 @@ int main(int argc, char* argv[])
   // test_cmp(a[edge_next],ie+1)
   }
 
+  { // constexpr_axis ===============================================
+    static_assert(ivanp::const_axis<double>{{0.,0.25,0.5,0.75,1.}}.nbins() == 4);
+    constexpr ivanp::const_axis<double> a((const double[]){0.,0.25,0.5,0.75,1.});
+    test_cmp( a.nbins(), 4 )
+    static_assert(a.nbins()==4);
+    test_cmp( a[-1], 0 )
+    static_assert(a[-1]==0);
+    test_cmp( a[2], 5 )
+    // static_assert(a[1.5]==5);
+    test_cmp( a[0.3], 2 )
+    // static_assert(a[0.3]==2);
+    test_cmp( a[0.5], 3 )
+  }
+
   return 0;
 }

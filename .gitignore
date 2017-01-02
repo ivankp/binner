@@ -1,3 +1,6 @@
 /.dep
-/test/axis
 /*.s
+/test/axis
+/test/const_array
+/test/find_bin
+.*.swp

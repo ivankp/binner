@@ -13,6 +13,10 @@
 #define test(var) \
   std::cout << "\033[36m" << #var << "\033[0m = " << var << std::endl;
 
+#ifdef _CN
+#error In __FILE__: cannot define macro _CN
+#endif
+#define _CN const noexcept
 #ifdef _CF
 #error In __FILE__: cannot define macro _CF
 #endif
@@ -146,21 +150,6 @@ public:
 
 };
 
-// Constexpr Axis ===================================================
-
-template <typename EdgeType, unsigned N>
-class const_axis: public abstract_axis<EdgeType> {
-public:
-  using base_type = abstract_axis<EdgeType>;
-  using size_type = typename base_type::size_type;
-  using edge_type = typename base_type::edge_type;
-  using edge_cref = typename base_type::edge_cref;
-
-private:
-  // const edge_type [N+1];
-
-};
-
 // Uniform Axis =====================================================
 
 template <typename EdgeType>
@@ -222,7 +211,7 @@ public:
     auto x = edge(i);
     const auto j = find_bin(x);
     const auto i1 = i + 1;
-    
+
     if (j < i1) {
       for ( ; find_bin(x = std::nextafter(x,x+1)) < i1; );
     } else {
@@ -335,10 +324,58 @@ inline decltype(auto) make_shared_axis(const std::array<T,N>& edges) {
     std::make_shared<uniform_axis<T>>(edges) );
 }
 
+// Constexpr Axis ===================================================
+
+template <typename EdgeType>
+class const_axis: public abstract_axis<EdgeType> {
+public:
+  using base_type = abstract_axis<EdgeType>;
+  using size_type = typename base_type::size_type;
+  using edge_type = typename base_type::edge_type;
+  using edge_cref = typename base_type::edge_cref;
+
+private:
+  const edge_type* _edges;
+  size_type _ne;
+
+public:
+  template <size_type N>
+  constexpr const_axis(const edge_type(&a)[N]): _edges(a), _ne(N - 1) {}
+
+  constexpr size_type nedges() _CNF { return _ne+1; }
+  constexpr size_type nbins () _CNF { return _ne; }
+
+  constexpr edge_cref edge(size_type i) _CNF { return _edges[i]; }
+
+  constexpr edge_cref min() _CNF { return _edges[0]; }
+  constexpr edge_cref max() _CNF { return _edges[_ne]; }
+
+  constexpr edge_cref lower(size_type bin) _CNF { return _edges[bin-1]; }
+  constexpr edge_cref upper(size_type bin) _CNF { return _edges[bin]; }
+
+  constexpr size_type find_bin(edge_cref x) _CN {
+    size_type i = 0, j = 0, count = _ne, step = 0;
+
+    if (!(x < _edges[_ne])) i = _ne + 1;
+    else if (!(x < _edges[0])) while (count > 0) {
+      step = count / 2;
+      j = step + i;
+      if (!(x < _edges[j])) {
+        i = j + 1;
+        count -= step + 1;
+      } else count = step;
+    }
+    return i;
+  }
+  constexpr size_type operator[](edge_cref x) _CN { return find_bin(x); }
+  inline size_type vfind_bin(edge_cref x) _CNF { return find_bin(x); }
+};
+
 // ==================================================================
 } // end namespace ivanp
 
 #undef _CF
+#undef _CN
 #undef _CNF
 #undef _CNN
 #undef _CNFN
