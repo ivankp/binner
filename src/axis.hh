@@ -1,3 +1,5 @@
+// Written by Ivan Pogrebnyak
+
 #ifndef IVANP_AXIS_HH
 #define IVANP_AXIS_HH
 
@@ -38,7 +40,13 @@ namespace ivanp {
 
 // INFO =============================================================
 
-// all axes assume bin index in [0,n+1], where n is the number of edges
+/*
+ * Same convention as in ROOT TH1:
+ * bin = 0;       underflow bin
+ * bin = 1;       first bin with low-edge xlow INCLUDED
+ * bin = nbins;   last bin with upper-edge xup EXCLUDED
+ * bin = nbins+1; overflow bin
+ */
 
 // Abstract Axis ====================================================
 

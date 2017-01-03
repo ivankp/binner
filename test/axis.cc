@@ -1,3 +1,5 @@
+// Written by Ivan Pogrebnyak
+
 #include <iostream>
 #include <sstream>
 #include <vector>

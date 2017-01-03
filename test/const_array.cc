@@ -1,3 +1,5 @@
+// Written by Ivan Pogrebnyak
+
 template <typename T>
 class const_array {
   const T* p;
