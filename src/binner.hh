@@ -15,6 +15,7 @@ struct axis_spec {
   using axis  = Axis;
   using under = std::integral_constant<bool,Uf>;
   using over  = std::integral_constant<bool,Of>;
+  using nover = std::integral_constant<axis_size_type,Uf+Of>;
 };
 
 template <typename Bin,
@@ -22,7 +23,6 @@ template <typename Bin,
           typename Filler = default_bin_filler<Bin>,
           typename Container = std::vector<Bin>>
 class binner {
-  // http://stackoverflow.com/a/9123810/2640636
   template<typename T> struct strip_specs;
   template<typename... Axes>
   struct strip_specs<std::tuple<Axes...>> {
@@ -40,6 +40,7 @@ public:
   using edge_type = typename axis_type<I>::edge_type;
   using filler_type = Filler;
   using container_type = Container;
+  using size_type = ivanp::axis_size_type;
   static constexpr unsigned naxes = std::tuple_size<AxesSpecs>::value;
 
   static_assert(naxes>0);
@@ -54,6 +55,13 @@ private:
     std::tuple<Args...> args
   ) { return axis_type<I>(std::get<A>(args)...); }
 
+  // TODO: std::array _make_axis
+  template <size_t I, typename T, size_t N, size_t... A>
+  inline axis_type<I> _make_axis(
+    std::index_sequence<A...>,
+    const std::array<T,N>& args
+  ) { return axis_type<I>(args); }
+
   template <typename... Axes, size_t... I>
   inline binner(std::index_sequence<I...> is, std::tuple<Axes...> t)
   : _axes{_make_axis<I>(
@@ -61,21 +69,67 @@ private:
         std::tuple_size<
           std::decay_t<std::tuple_element_t<I,decltype(t)>>
         >::value
-      >(), std::get<I>(t) )...}, _bins() { }
+      >(), std::get<I>(t) )...}, _bins()
+  {
+    // TODO: specialize instead of using runtime if
+    // http://stackoverflow.com/q/41473675/2640636
+    if (is_std_vector<container_type>::value)
+      _bins.resize(nbins_total());
+    if (std::is_arithmetic<typename container_type::value_type>::value)
+      for (auto& b : _bins) b = 0;
+  }
+
+  template <size_t I>
+  inline std::enable_if_t<I!=0,size_type> nbins_total_impl() const noexcept {
+    return ( axis<I>().nbins() + axis_spec<I>::nover::value
+      ) * nbins_total_impl<I-1>();
+  }
+  template <size_t I>
+  inline std::enable_if_t<I==0,size_type> nbins_total_impl() const noexcept {
+    return ( axis<0>().nbins() + axis_spec<0>::nover::value );
+  }
+
+  template <size_t I=0, typename T, typename... Args>
+  inline size_type find_bin_impl(const T& x, const Args&... args) {
+    return axis<I>().find_bin(x)
+      + (axis<I>().nbins() - !axis_spec<I>::under::value)
+      * find_bin_impl<I+1>(args...);
+  }
+  template <size_t I=0, typename T>
+  inline size_type find_bin_impl(const T& x) {
+    return axis<I>().find_bin(x) - !axis_spec<I>::under::value;
+  }
 
 public:
-  constexpr binner(): _axes(), _bins() { }
+  binner() = delete;
   ~binner() = default;
 
-  template <typename... Axes,
-            typename = std::enable_if_t<sizeof...(Axes)==naxes>>
-  binner(Axes&&... axes): binner(
+  template <typename... Axes, typename = std::enable_if_t<
+    (sizeof...(Axes)==naxes) &&
+    !bool_or<is_integer_sequence<Axes>::value...>::value
+  >>
+  inline binner(Axes&&... axes): binner(
     std::index_sequence_for<Axes...>(),
     std::forward_as_tuple(std::forward<Axes>(axes)...)
   ) { }
 
   template <unsigned I=0>
-  const axis_type<I> axis() const noexcept { return std::get<I>(_axes); }
+  constexpr const axis_type<I> axis() const noexcept {
+    return std::get<I>(_axes);
+  }
+
+  size_type nbins_total() const noexcept {
+    return nbins_total_impl<naxes-1>();
+  }
+
+  constexpr const container_type& bins() const noexcept { return _bins; }
+  constexpr container_type& bins() noexcept { return _bins; }
+
+  template <typename... Args>
+  inline size_type find_bin(const Args&... args) {
+    static_assert(sizeof...(args)==naxes);
+    return find_bin_impl(args...);
+  }
 };
 
 } // end namespace ivanp

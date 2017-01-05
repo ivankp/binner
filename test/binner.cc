@@ -45,6 +45,8 @@ int main(int argc, char* argv[])
   test( sizeof(h) )
   test( h.axis().nbins() )
   test( h.axis().lower(2) )
+
+  test_cmp( h.find_bin(0.45), 5 )
   }
 
   {
@@ -59,12 +61,16 @@ int main(int argc, char* argv[])
   print_type<decltype(h)::axis_type<0>>();
   print_type<decltype(h)::axis_type<1>>();
 
-  test( decltype(h)::naxes )
+  test_cmp( decltype(h)::naxes, 2 )
   test( sizeof(h) )
-  test( decltype(h)::axis_spec<0>::under::value );
-  test( decltype(h)::axis_spec<0>::over::value );
-  test( decltype(h)::axis_spec<1>::under::value );
-  test( decltype(h)::axis_spec<1>::over::value );
+  test_cmp( decltype(h)::axis_spec<0>::under::value, true );
+  test_cmp( decltype(h)::axis_spec<0>::over::value, true );
+  test_cmp( decltype(h)::axis_spec<1>::under::value, false );
+  test_cmp( decltype(h)::axis_spec<1>::over::value, false );
+
+  test_cmp( h.bins().size(), 24 )
+  test_cmp( h.find_bin(0.45,2), 5+10*0 )
+  test_cmp( h.find_bin(0.45,3), 5+10*1 )
   }
 
   return 0;
