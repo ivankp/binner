@@ -71,6 +71,11 @@ int main(int argc, char* argv[])
   test_cmp( h.bins().size(), 24 )
   test_cmp( h.find_bin(0.45,2), 5+10*0 )
   test_cmp( h.find_bin(0.45,3), 5+10*1 )
+
+  h.fill(0.35,3);
+  test_cmp( h.bins()[13], 0)
+  test_cmp( h.bins()[14], 1)
+  test_cmp( h.bin(4,1), 1 )
   }
 
   return 0;

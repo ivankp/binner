@@ -1,7 +1,6 @@
 /.dep
 /*.s
 /test/axis
-/test/const_array
 /test/find_bin
 /test/binner
 .*.swp
