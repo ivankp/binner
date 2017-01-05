@@ -90,13 +90,13 @@ private:
   }
 
   template <size_t I=0, typename T, typename... Args>
-  inline size_type find_bin_impl(const T& x, const Args&... args) {
+  inline size_type find_bin_impl(const T& x, const Args&... args) const {
     return axis<I>().find_bin(x)
       + (axis<I>().nbins() - !axis_spec<I>::under::value)
       * find_bin_impl<I+1>(args...);
   }
   template <size_t I=0, typename T>
-  inline size_type find_bin_impl(const T& x) {
+  inline size_type find_bin_impl(const T& x) const {
     return axis<I>().find_bin(x) - !axis_spec<I>::under::value;
   }
 
@@ -125,10 +125,26 @@ public:
   constexpr const container_type& bins() const noexcept { return _bins; }
   constexpr container_type& bins() noexcept { return _bins; }
 
+  inline size_type fill_bin(size_type bin) {
+    ++_bins[bin];
+    return bin;
+  }
+  template <typename W>
+  inline size_type fill_bin(size_type bin, W&& weight) {
+    _bins[bin] += std::forward<W>(weight);
+    return bin;
+  }
+
   template <typename... Args>
-  inline size_type find_bin(const Args&... args) {
+  size_type find_bin(const Args&... args) const {
     static_assert(sizeof...(args)==naxes);
     return find_bin_impl(args...);
+  }
+
+  template <typename... Args>
+  size_type fill(const Args&... args) {
+    static_assert(sizeof...(args)==naxes);
+    return fill_bin(find_bin_impl(args...));
   }
 };
 
