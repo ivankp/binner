@@ -60,7 +60,7 @@ private:
   inline axis_type<I> _make_axis(
     std::index_sequence<A...>,
     const std::array<T,N>& args
-  ) { return axis_type<I>(args); }
+  ) { return axis_type<I>({std::get<A>(args)...}); }
 
   template <typename... Axes, size_t... I>
   inline binner(std::index_sequence<I...> is, std::tuple<Axes...> t)

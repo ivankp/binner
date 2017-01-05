@@ -4,6 +4,7 @@
 #include <sstream>
 #include <vector>
 #include <array>
+#include <experimental/array>
 #include <cmath>
 #include <cstdlib>
 
@@ -54,9 +55,10 @@ int main(int argc, char* argv[])
 
   ivanp::binner<double, std::tuple<
     ivanp::axis_spec<ivanp::uniform_axis<double>>,
-    ivanp::axis_spec<ivanp::container_axis<std::vector<double>>,false,false>
+    // ivanp::axis_spec<ivanp::container_axis<std::vector<double>>,false,false>
+    ivanp::axis_spec<ivanp::container_axis<std::array<double,3>>,false,false>
   >> h( std::make_tuple(10,0,1),
-        std::make_tuple(std::initializer_list<double>{1.,2.5,5.}) );
+        std::experimental::make_array(1,2.5,5) );
   // print_type<decltype(h)>(); BR
   print_type<decltype(h)::axis_type<0>>();
   print_type<decltype(h)::axis_type<1>>();

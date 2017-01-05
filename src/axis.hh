@@ -110,7 +110,8 @@ public:
   container_axis(container_type&& edges): _edges(std::move(edges)) { }
   container_axis(const container_axis& axis): _edges(axis._edges) { }
   container_axis(container_axis&& axis): _edges(std::move(axis._edges)) { }
-  template <typename T>
+  template <typename T, typename C=container_type,
+            typename = std::enable_if_t<!is_std_array<C>::value>>
   container_axis(std::initializer_list<T> edges): _edges(edges) { }
 
   container_axis& operator=(const container_type& edges) {
