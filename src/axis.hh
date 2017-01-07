@@ -111,8 +111,13 @@ public:
   container_axis(const container_axis& axis): _edges(axis._edges) { }
   container_axis(container_axis&& axis): _edges(std::move(axis._edges)) { }
   template <typename T, typename C=container_type,
-            typename = std::enable_if_t<!is_std_array<C>::value>>
+            std::enable_if_t<!is_std_array<C>::value>* = nullptr>
   container_axis(std::initializer_list<T> edges): _edges(edges) { }
+  template <typename T, typename C=container_type,
+            std::enable_if_t<is_std_array<C>::value>* = nullptr>
+  container_axis(std::initializer_list<T> edges) {
+    std::copy(edges.begin(),edges.end(),_edges.begin());
+  }
 
   container_axis& operator=(const container_type& edges) {
     _edges = edges;
