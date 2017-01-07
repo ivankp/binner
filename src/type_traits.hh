@@ -5,6 +5,8 @@
 
 namespace ivanp {
 
+template <typename New, typename Old> using replace_t = New;
+
 // boolean compositing **********************************************
 
 template <bool...> struct bool_sequence {};
@@ -27,6 +29,8 @@ struct const_ref_if_not_scalar<T,true> {
 };
 template <typename T>
 using const_ref_if_not_scalar_t = typename const_ref_if_not_scalar<T>::type;
+
+// IS ***************************************************************
 
 template <typename T> struct is_std_array: std::false_type { };
 template <typename T, size_t N>

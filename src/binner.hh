@@ -4,6 +4,7 @@
 #define IVANP_BINNER_HH
 
 #include <tuple>
+#include <array>
 
 #include "axis.hh"
 #include "default_bin_filler.hh"
@@ -22,26 +23,25 @@ template <typename Bin,
           typename AxesSpecs = std::tuple<axis_spec<uniform_axis<double>>>,
           typename Filler = default_bin_filler<Bin>,
           typename Container = std::vector<Bin>>
-class binner {
-  template<typename T> struct strip_specs;
-  template<typename... Axes>
-  struct strip_specs<std::tuple<Axes...>> {
-    using axes = std::tuple<typename Axes::axis...>;
-  };
-  using axes_tuple = typename strip_specs<AxesSpecs>::axes;
+class binner;
 
+template <typename Bin, typename... Ax, typename Filler, typename Container>
+class binner<Bin,std::tuple<Ax...>,Filler,Container> {
 public:
   using bin_type = Bin;
+  using axes_specs = std::tuple<Ax...>;
+  using axes_tuple = std::tuple<typename Ax::axis...>;
   template <unsigned I>
-  using axis_spec = std::tuple_element_t<I,AxesSpecs>;
+  using axis_spec = std::tuple_element_t<I,axes_specs>;
   template <unsigned I>
   using axis_type = typename axis_spec<I>::axis;
   template <unsigned I>
   using edge_type = typename axis_type<I>::edge_type;
   using filler_type = Filler;
   using container_type = Container;
+  using value_type = typename container_type::value_type;
   using size_type = ivanp::axis_size_type;
-  static constexpr unsigned naxes = std::tuple_size<AxesSpecs>::value;
+  static constexpr unsigned naxes = sizeof...(Ax);
   using index_array_type = std::array<size_type,naxes>;
   using index_array_cref = const index_array_type&;
 
@@ -52,13 +52,13 @@ private:
   container_type _bins;
 
   template <size_t I, typename... Args, size_t... A>
-  inline axis_type<I> _make_axis(
+  constexpr axis_type<I> _make_axis(
     std::index_sequence<A...>,
     std::tuple<Args...> args
   ) { return axis_type<I>(std::get<A>(args)...); }
 
   template <size_t I, typename T, size_t N, size_t... A>
-  inline axis_type<I> _make_axis(
+  constexpr axis_type<I> _make_axis(
     std::index_sequence<A...>,
     const std::array<T,N>& args
   ) { return axis_type<I>({std::get<A>(args)...}); }
@@ -81,12 +81,12 @@ private:
   }
 
   template <size_t I>
-  inline std::enable_if_t<I!=0,size_type> nbins_total_impl() const noexcept {
+  constexpr std::enable_if_t<I!=0,size_type> nbins_total_impl() const noexcept {
     return ( axis<I>().nbins() + axis_spec<I>::nover::value
       ) * nbins_total_impl<I-1>();
   }
   template <size_t I>
-  inline std::enable_if_t<I==0,size_type> nbins_total_impl() const noexcept {
+  constexpr std::enable_if_t<I==0,size_type> nbins_total_impl() const noexcept {
     return ( axis<0>().nbins() + axis_spec<0>::nover::value );
   }
 
@@ -102,18 +102,16 @@ private:
   }
 
   template <typename T, typename... TT>
-  inline size_type index_impl(T i, TT... ii) const noexcept {
+  constexpr size_type index_impl(T i, TT... ii) const noexcept {
     return i + (axis<naxes-sizeof...(TT)-1>().nbins()
              - !axis_spec<naxes-sizeof...(TT)-1>::under::value)
       * index_impl(ii...);
   }
   template <typename T>
-  inline size_type index_impl(T i) const noexcept { return i; }
+  constexpr size_type index_impl(T i) const noexcept { return i; }
   template <size_t... I>
-  inline size_type index_impl(index_array_cref bin, std::index_sequence<I...>)
-  const noexcept {
-    return index_impl(std::get<I>(bin)...);
-  }
+  constexpr size_type index_impl(index_array_cref ia, std::index_sequence<I...>)
+  const noexcept { return index_impl(std::get<I>(ia)...); }
 
 public:
   binner() = delete;
@@ -133,21 +131,21 @@ public:
     return std::get<I>(_axes);
   }
 
-  size_type nbins_total() const noexcept {
+  constexpr size_type nbins_total() const noexcept {
     return nbins_total_impl<naxes-1>();
   }
 
   constexpr const container_type& bins() const noexcept { return _bins; }
   constexpr container_type& bins() noexcept { return _bins; }
 
-  template <typename... TT>
-  inline size_type index(TT... ii) const noexcept { return index_impl(ii...); }
-  inline size_type index(index_array_cref bin) const noexcept {
+  constexpr size_type index(replace_t<size_type,Ax>... ii) const noexcept {
+    return index_impl(ii...);
+  }
+  constexpr size_type index(index_array_cref bin) const noexcept {
     return index_impl(bin,std::make_index_sequence<naxes>());
   }
 
-  template <typename... TT>
-  const typename container_type::value_type bin(TT... ii) const {
+  inline const value_type& bin(replace_t<size_type,Ax>... ii) const {
     return _bins[index(ii...)];
   }
 
@@ -160,26 +158,26 @@ public:
     filler_type()(_bins[bin], std::forward<Args>(args)...);
     return bin;
   }
-  inline size_type fill_bin(index_array_cref ii) {
-    const auto bin = index(ii);
+  inline size_type fill_bin(index_array_cref ia) {
+    const auto bin = index(ia);
     filler_type()(_bins[bin]);
     return bin;
   }
   template <typename... Args>
-  inline size_type fill_bin(index_array_cref ii, Args&&... args) {
-    const auto bin = index(ii);
+  inline size_type fill_bin(index_array_cref ia, Args&&... args) {
+    const auto bin = index(ia);
     filler_type()(_bins[bin], std::forward<Args>(args)...);
     return bin;
   }
 
   template <typename... Args>
-  size_type find_bin(const Args&... args) const {
+  inline size_type find_bin(const Args&... args) const {
     static_assert(sizeof...(args)==naxes);
     return find_bin_impl(args...);
   }
 
   template <typename... Args>
-  size_type fill(const Args&... args) {
+  inline size_type fill(const Args&... args) {
     static_assert(sizeof...(args)==naxes);
     return fill_bin(find_bin_impl(args...));
   }
