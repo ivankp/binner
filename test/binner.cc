@@ -38,47 +38,58 @@ int main(int argc, char* argv[])
   // test wrong template argument
   // ivanp::binner<double, ivanp::uniform_axis<int>> h;
 
-  {
-  ivanp::binner<double> h( std::make_tuple(10,0,1) );
-  print_type<decltype(h)::axis_type<0>>();
+  ivanp::binner<double> h1( std::make_tuple(10,0,1) );
+  print_type<decltype(h1)::axis_type<0>>();
 
-  test( decltype(h)::naxes )
-  test( sizeof(h) )
-  test( h.axis().nbins() )
-  test( h.axis().lower(2) )
+  test( decltype(h1)::naxes )
+  test( sizeof(h1) )
+  test( h1.axis().nbins() )
+  test( h1.axis().lower(2) )
 
-  test_cmp( h.find_bin(0.45), 5 )
-  }
+  test_cmp( h1.find_bin(0.45), 5 )
 
-  {
   BR
 
   ivanp::binner<double, std::tuple<
-    ivanp::axis_spec<ivanp::uniform_axis<double>>,
+    ivanp::axis_spec<ivanp::ref_axis<double>>,
     // ivanp::axis_spec<ivanp::container_axis<std::vector<double>>,false,false>
     ivanp::axis_spec<ivanp::container_axis<std::array<double,3>>,false,false>
-  >> h( std::make_tuple(10,0,1),
+  >> h2( std::make_tuple(&h1.axis()),
         std::experimental::make_array(1,2.5,5) );
-  // print_type<decltype(h)>(); BR
-  print_type<decltype(h)::axis_type<0>>();
-  print_type<decltype(h)::axis_type<1>>();
+  using h2_t = decltype(h2);
 
-  test_cmp( decltype(h)::naxes, 2 )
-  test( sizeof(h) )
-  test_cmp( decltype(h)::axis_spec<0>::under::value, true );
-  test_cmp( decltype(h)::axis_spec<0>::over::value, true );
-  test_cmp( decltype(h)::axis_spec<1>::under::value, false );
-  test_cmp( decltype(h)::axis_spec<1>::over::value, false );
+  // print_type<h2_t>(); BR
+  print_type<h2_t::axis_type<0>>();
+  print_type<h2_t::axis_type<1>>();
 
-  test_cmp( h.bins().size(), 24 )
-  test_cmp( h.find_bin(0.45,2), 5+10*0 )
-  test_cmp( h.find_bin(0.45,3), 5+10*1 )
+  test_cmp( h2_t::naxes, 2 )
+  test_cmp( sizeof(h2),
+    sizeof(h2_t::axis_type<0>) +
+    sizeof(h2_t::axis_type<1>) +
+    sizeof(h2_t::container_type) )
+  test( sizeof(h2.axis<0>()) )
+  test( sizeof(h2.axis<1>()) )
+  test( sizeof(h2_t::container_type) )
+  BR
 
-  h.fill(0.35,3);
-  test_cmp( h.bins()[13], 0)
-  test_cmp( h.bins()[14], 1)
-  test_cmp( h.bin(4,1), 1 )
-  }
+  test_cmp( h2_t::axis_spec<0>::under::value, true );
+  test_cmp( h2_t::axis_spec<0>::over::value, true );
+  test_cmp( h2_t::axis_spec<1>::under::value, false );
+  test_cmp( h2_t::axis_spec<1>::over::value, false );
+  BR
+
+  test_cmp( h2.bins().size(), 24 )
+  test_cmp( h2.find_bin(0.45,2), 5+10*0 )
+  test_cmp( h2.find_bin(0.45,3), 5+10*1 )
+
+  h2.fill(0.35,3);
+  test_cmp( h2.bins()[13], 0)
+  test_cmp( h2.bins()[14], 1)
+  test_cmp( h2.bin(4,1), 1 )
+
+  h2.fill_bin(13);
+  h2.fill_bin({3,1},4);
+  test_cmp( h2.bins()[13], 5 )
 
   return 0;
 }

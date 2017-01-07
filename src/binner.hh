@@ -42,6 +42,8 @@ public:
   using container_type = Container;
   using size_type = ivanp::axis_size_type;
   static constexpr unsigned naxes = std::tuple_size<AxesSpecs>::value;
+  using index_array_type = std::array<size_type,naxes>;
+  using index_array_cref = const index_array_type&;
 
   static_assert(naxes>0);
 
@@ -55,7 +57,6 @@ private:
     std::tuple<Args...> args
   ) { return axis_type<I>(std::get<A>(args)...); }
 
-  // TODO: std::array _make_axis
   template <size_t I, typename T, size_t N, size_t... A>
   inline axis_type<I> _make_axis(
     std::index_sequence<A...>,
@@ -108,6 +109,11 @@ private:
   }
   template <typename T>
   inline size_type index_impl(T i) const noexcept { return i; }
+  template <size_t... I>
+  inline size_type index_impl(index_array_cref bin, std::index_sequence<I...>)
+  const noexcept {
+    return index_impl(std::get<I>(bin)...);
+  }
 
 public:
   binner() = delete;
@@ -123,7 +129,7 @@ public:
   ) { }
 
   template <unsigned I=0>
-  constexpr const axis_type<I> axis() const noexcept {
+  constexpr const axis_type<I>& axis() const noexcept {
     return std::get<I>(_axes);
   }
 
@@ -136,6 +142,9 @@ public:
 
   template <typename... TT>
   inline size_type index(TT... ii) const noexcept { return index_impl(ii...); }
+  inline size_type index(index_array_cref bin) const noexcept {
+    return index_impl(bin,std::make_index_sequence<naxes>());
+  }
 
   template <typename... TT>
   const typename container_type::value_type bin(TT... ii) const {
@@ -143,12 +152,23 @@ public:
   }
 
   inline size_type fill_bin(size_type bin) {
-    ++_bins[bin];
+    filler_type()(_bins[bin]);
     return bin;
   }
-  template <typename W>
-  inline size_type fill_bin(size_type bin, W&& weight) {
-    _bins[bin] += std::forward<W>(weight);
+  template <typename... Args>
+  inline size_type fill_bin(size_type bin, Args&&... args) {
+    filler_type()(_bins[bin], std::forward<Args>(args)...);
+    return bin;
+  }
+  inline size_type fill_bin(index_array_cref ii) {
+    const auto bin = index(ii);
+    filler_type()(_bins[bin]);
+    return bin;
+  }
+  template <typename... Args>
+  inline size_type fill_bin(index_array_cref ii, Args&&... args) {
+    const auto bin = index(ii);
+    filler_type()(_bins[bin], std::forward<Args>(args)...);
     return bin;
   }
 
