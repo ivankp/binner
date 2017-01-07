@@ -100,6 +100,18 @@ private:
   inline size_type find_bin_impl(const T& x) const {
     return axis<I>().find_bin(x) - !axis_spec<I>::under::value;
   }
+  template <typename... T, size_t... I>
+  constexpr size_type find_bin_tuple(
+    const std::tuple<T...>& t, std::index_sequence<I...>)
+  const { return find_bin_impl(std::get<I>(t)...); }
+
+  template <typename... T, size_t... I>
+  inline size_type fill_bin_tuple(size_type bin,
+    const std::tuple<T...>& t, std::index_sequence<I...>
+  ) {
+    filler_type()(_bins[bin], std::get<I>(t)...);
+    return bin;
+  }
 
   template <typename T, typename... TT>
   constexpr size_type index_impl(T i, TT... ii) const noexcept {
@@ -118,7 +130,7 @@ public:
 
   template <typename... Axes, typename = std::enable_if_t<
     (sizeof...(Axes)==naxes) &&
-    !bool_or<is_integer_sequence<Axes>::value...>::value
+    !mp_or<is_integer_sequence<Axes>::value...>::value
   >>
   inline binner(Axes&&... axes): binner(
     std::index_sequence_for<Axes...>(),
@@ -148,20 +160,11 @@ public:
     return _bins[index_impl(ii...)];
   }
 
-  // inline size_type fill_bin(size_type bin) {
-  //   filler_type()(_bins[bin]);
-  //   return bin;
-  // }
   template <typename... Args>
   inline size_type fill_bin(size_type bin, Args&&... args) {
     filler_type()(_bins[bin], std::forward<Args>(args)...);
     return bin;
   }
-  // inline size_type fill_bin(index_array_cref ia) {
-  //   const auto bin = index(ia);
-  //   filler_type()(_bins[bin]);
-  //   return bin;
-  // }
   template <typename... Args>
   inline size_type fill_bin(index_array_cref ia, Args&&... args) {
     const auto bin = index(ia);
@@ -171,14 +174,28 @@ public:
 
   template <typename... Args>
   inline size_type find_bin(const Args&... args) const {
-    static_assert(sizeof...(args)==naxes);
+    static_assert(sizeof...(Args)==naxes);
     return find_bin_impl(args...);
+  }
+  template <typename... Args>
+  inline size_type find_bin(const std::tuple<Args...>& args) const {
+    static_assert(sizeof...(Args)==naxes);
+    return find_bin_tuple(args,std::make_index_sequence<naxes>());
   }
 
   template <typename... Args>
-  inline size_type fill(const Args&... args) {
-    static_assert(sizeof...(args)==naxes);
+  inline std::enable_if_t<sizeof...(Args)==naxes,size_type>
+  fill(const Args&... args) {
     return fill_bin(find_bin_impl(args...));
+  }
+  template <typename... Args>
+  inline std::enable_if_t<(sizeof...(Args)>naxes),size_type>
+  fill(const Args&... args) {
+    auto tup = std::forward_as_tuple(args...);
+    return fill_bin_tuple(
+      find_bin_tuple(tup,std::make_index_sequence<naxes>()),
+      tup, index_sequence_tail<naxes,sizeof...(Args)>()
+    );
   }
 };
 

@@ -5,6 +5,8 @@
 
 namespace ivanp {
 
+// ******************************************************************
+
 template <typename New, typename Old> using replace_t = New;
 
 // boolean compositing **********************************************
@@ -12,10 +14,23 @@ template <typename New, typename Old> using replace_t = New;
 template <bool...> struct bool_sequence {};
 
 template <bool... B>
-using bool_and = std::is_same< bool_sequence< B... >,
-                               bool_sequence< ( B || true )... > >;
+using mp_and = std::is_same< bool_sequence< B... >,
+                             bool_sequence< ( B || true )... > >;
 template <bool... B>
-using bool_or = std::integral_constant< bool, !bool_and< !B... >::value >;
+using mp_or = std::integral_constant< bool, !mp_and< !B... >::value >;
+
+// ******************************************************************
+
+template <typename Seq, typename Seq::value_type Inc>
+struct increment_integer_sequence;
+template <typename T, T... I, T Inc>
+struct increment_integer_sequence<std::integer_sequence<T,I...>, Inc> {
+  using type = std::integer_sequence<T,(I+Inc)...>;
+};
+
+template <size_t A, size_t B>
+using index_sequence_tail
+  = typename increment_integer_sequence<std::make_index_sequence<B-A>,A>::type;
 
 // ******************************************************************
 

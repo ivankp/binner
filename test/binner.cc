@@ -95,5 +95,8 @@ int main(int argc, char* argv[])
   h2.fill_bin({3,1},4);
   test_cmp( h2.bins()[13], 5 )
 
+  h2.fill(0.2,1.5,42);
+  test_cmp( h2.bin(3,0), 42 )
+
   return 0;
 }
