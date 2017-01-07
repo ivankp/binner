@@ -48,6 +48,10 @@ int main(int argc, char* argv[])
 
   test_cmp( h1.find_bin(0.45), 5 )
 
+  h1.fill_bin(1);
+  h1.fill_bin({1});
+  test_cmp( h1.bin(1), 2 )
+
   BR
 
   ivanp::binner<double, std::tuple<

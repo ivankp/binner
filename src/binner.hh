@@ -107,8 +107,7 @@ private:
              - !axis_spec<naxes-sizeof...(TT)-1>::under::value)
       * index_impl(ii...);
   }
-  template <typename T>
-  constexpr size_type index_impl(T i) const noexcept { return i; }
+  constexpr size_type index_impl(size_type i) const noexcept { return i; }
   template <size_t... I>
   constexpr size_type index_impl(index_array_cref ia, std::index_sequence<I...>)
   const noexcept { return index_impl(std::get<I>(ia)...); }
@@ -146,23 +145,23 @@ public:
   }
 
   inline const value_type& bin(replace_t<size_type,Ax>... ii) const {
-    return _bins[index(ii...)];
+    return _bins[index_impl(ii...)];
   }
 
-  inline size_type fill_bin(size_type bin) {
-    filler_type()(_bins[bin]);
-    return bin;
-  }
+  // inline size_type fill_bin(size_type bin) {
+  //   filler_type()(_bins[bin]);
+  //   return bin;
+  // }
   template <typename... Args>
   inline size_type fill_bin(size_type bin, Args&&... args) {
     filler_type()(_bins[bin], std::forward<Args>(args)...);
     return bin;
   }
-  inline size_type fill_bin(index_array_cref ia) {
-    const auto bin = index(ia);
-    filler_type()(_bins[bin]);
-    return bin;
-  }
+  // inline size_type fill_bin(index_array_cref ia) {
+  //   const auto bin = index(ia);
+  //   filler_type()(_bins[bin]);
+  //   return bin;
+  // }
   template <typename... Args>
   inline size_type fill_bin(index_array_cref ia, Args&&... args) {
     const auto bin = index(ia);
