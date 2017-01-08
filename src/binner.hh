@@ -63,25 +63,6 @@ private:
     const std::array<T,N>& args
   ) { return axis_type<I>({std::get<A>(args)...}); }
 
-/*
-  template <typename... Axes, size_t... I>
-  inline binner(std::index_sequence<I...> is, std::tuple<Axes...> t)
-  : _axes{_make_axis<I>(
-      std::make_index_sequence<
-        std::tuple_size<
-          std::decay_t<std::tuple_element_t<I,decltype(t)>>
-        >::value
-      >(), std::get<I>(t) )...}, _bins()
-  {
-    // TODO: specialize instead of using runtime if
-    // http://stackoverflow.com/q/41473675/2640636
-    if (is_std_vector<container_type>::value)
-      _bins.resize(nbins_total());
-    if (std::is_arithmetic<typename container_type::value_type>::value)
-      for (auto& b : _bins) b = 0;
-  }
-*/
-
   template <size_t I>
   constexpr std::enable_if_t<I!=0,size_type> nbins_total_impl() const noexcept {
     return ( axis<I>().nbins() + axis_spec<I>::nover::value
@@ -130,21 +111,14 @@ public:
   binner() = delete;
   ~binner() = default;
 
-  // template <typename... Axes, typename = std::enable_if_t<
-  //   (sizeof...(Axes)==naxes) &&
-  //   !mp_or<is_integer_sequence<Axes>::value...>::value
-  // >>
-  // inline binner(Axes&&... axes): binner(
-  //   std::index_sequence_for<Axes...>(),
-  //   std::forward_as_tuple(std::forward<Axes>(axes)...)
-  // ) { }
-
   template <typename C=container_type,
             std::enable_if_t<is_std_vector<C>::value>* = nullptr>
-  binner(typename Ax::axis&&... axes): _axes{axes...}, _bins(nbins_total()) { }
+  binner(typename Ax::axis... axes)
+  : _axes{std::forward<typename Ax::axis>(axes)...}, _bins(nbins_total()) { }
   template <typename C=container_type,
             std::enable_if_t<is_std_array<C>::value>* = nullptr>
-  binner(typename Ax::axis&&... axes): _axes{axes...}, _bins{} { }
+  binner(typename Ax::axis... axes)
+  : _axes{std::forward<typename Ax::axis>(axes)...}, _bins{} { }
 
   template <unsigned I=0>
   constexpr const axis_type<I>& axis() const noexcept {
