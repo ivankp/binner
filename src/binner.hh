@@ -21,12 +21,12 @@ struct axis_spec {
 
 template <typename Bin,
           typename AxesSpecs = std::tuple<axis_spec<uniform_axis<double>>>,
-          typename Filler = default_bin_filler<Bin>,
-          typename Container = std::vector<Bin>>
+          typename Container = std::vector<Bin>,
+          typename Filler = default_bin_filler<Bin>>
 class binner;
 
-template <typename Bin, typename... Ax, typename Filler, typename Container>
-class binner<Bin,std::tuple<Ax...>,Filler,Container> {
+template <typename Bin, typename... Ax, typename Container, typename Filler>
+class binner<Bin,std::tuple<Ax...>,Container,Filler> {
 public:
   using bin_type = Bin;
   using axes_specs = std::tuple<Ax...>;
@@ -37,8 +37,8 @@ public:
   using axis_type = typename axis_spec<I>::axis;
   template <unsigned I>
   using edge_type = typename axis_type<I>::edge_type;
-  using filler_type = Filler;
   using container_type = Container;
+  using filler_type = Filler;
   using value_type = typename container_type::value_type;
   using size_type = ivanp::axis_size_type;
   static constexpr unsigned naxes = sizeof...(Ax);

@@ -38,7 +38,6 @@ int main(int argc, char* argv[])
   // test wrong template argument
   // ivanp::binner<double, ivanp::uniform_axis<int>> h;
 
-  // ivanp::binner<double> h1( std::make_tuple(10,0,1) );
   ivanp::binner<double> h1( {10,0,1} );
   print_type<decltype(h1)::axis_type<0>>();
 
@@ -59,9 +58,7 @@ int main(int argc, char* argv[])
     ivanp::axis_spec<ivanp::ref_axis<double>>,
     // ivanp::axis_spec<ivanp::container_axis<std::vector<double>>,false,false>
     ivanp::axis_spec<ivanp::container_axis<std::array<double,3>>,false,false>
-  // >> h2( std::make_tuple(&h1.axis()),
-  //       std::experimental::make_array(1,2.5,5) );
-  >> h2( &h1.axis(), {1.,2.5,5.} );
+  >/*, std::array<double,24>*/> h2( &h1.axis(), {1.,2.5,5.} );
   using h2_t = decltype(h2);
 
   // print_type<h2_t>(); BR
@@ -76,6 +73,7 @@ int main(int argc, char* argv[])
   test( sizeof(h2.axis<0>()) )
   test( sizeof(h2.axis<1>()) )
   test( sizeof(h2_t::container_type) )
+  test( h2.nbins_total() )
   BR
 
   test_cmp( h2_t::axis_spec<0>::under::value, true );
