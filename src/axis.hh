@@ -12,15 +12,6 @@
 
 #include "type_traits.hh"
 
-#ifdef _CN
-#error In __FILE__: cannot define macro _CN
-#endif
-#define _CN const noexcept
-#ifdef _CNN
-#error In __FILE__: cannot define macro _CNN
-#endif
-#define _CNN(expr) const noexcept(noexcept(expr))
-
 namespace ivanp {
 
 // INFO =============================================================
@@ -135,16 +126,20 @@ public:
     return *this;
   }
 
-  inline size_type nedges() _CNN(_edges.size()) { return _edges.size(); }
-  inline size_type nbins () _CNN(_edges.size()) { return _edges.size()-1; }
+  inline size_type nedges() const noexcept(noexcept(_edges.size()))
+  { return _edges.size(); }
+  inline size_type nbins () const noexcept(noexcept(_edges.size()))
+  { return _edges.size()-1; }
 
-  inline edge_cref edge(size_type i) _CN { return _edges[i]; }
+  inline edge_cref edge(size_type i) const noexcept { return _edges[i]; }
 
-  inline edge_cref min() _CNN(_edges.front()) { return _edges.front(); }
-  inline edge_cref max() _CNN(_edges.back()) { return _edges.back(); }
+  inline edge_cref min() const noexcept(noexcept(_edges.front()))
+  { return _edges.front(); }
+  inline edge_cref max() const noexcept(noexcept(_edges.back()))
+  { return _edges.back(); }
 
-  inline edge_cref lower(size_type bin) _CN { return _edges[bin-1]; }
-  inline edge_cref upper(size_type bin) _CN { return _edges[bin]; }
+  inline edge_cref lower(size_type bin) const noexcept { return _edges[bin-1];}
+  inline edge_cref upper(size_type bin) const noexcept { return _edges[bin]; }
 
   template <typename T>
   size_type find_bin(const T& x) const noexcept {
@@ -191,10 +186,10 @@ public:
     return *this;
   }
 
-  inline size_type nbins () _CN { return _nbins; }
-  inline size_type nedges() _CN { return _nbins+1; }
+  inline size_type nbins () const noexcept { return _nbins; }
+  inline size_type nedges() const noexcept { return _nbins+1; }
 
-  inline edge_cref edge(size_type i) _CN {
+  inline edge_cref edge(size_type i) const noexcept {
     const auto width = (_max - _min)/_nbins;
     return _min + i*width;
   }
@@ -202,8 +197,8 @@ public:
   inline edge_cref min() const noexcept { return _min; }
   inline edge_cref max() const noexcept { return _max; }
 
-  inline edge_cref lower(size_type bin) _CN { return edge(bin-1); }
-  inline edge_cref upper(size_type bin) _CN { return edge(bin); }
+  inline edge_cref lower(size_type bin) const noexcept { return edge(bin-1); }
+  inline edge_cref upper(size_type bin) const noexcept { return edge(bin); }
 
   template <typename T>
   size_type find_bin(const T& x) const noexcept {
@@ -212,12 +207,12 @@ public:
     return _nbins*(x-_min)/(_max-_min) + 1;
   }
 
-  inline size_type vfind_bin(edge_cref x) _CN { return find_bin(x); }
+  inline size_type vfind_bin(edge_cref x) const noexcept
+  { return find_bin(x); }
 
   template <typename T>
-  inline size_type operator[](const T& x) const noexcept {
-    return find_bin(x);
-  }
+  inline size_type operator[](const T& x) const noexcept
+  { return find_bin(x); }
 
   // exact edge calculation
   edge_type exact_edge(size_type i) const noexcept {
@@ -355,18 +350,20 @@ public:
   template <size_type N>
   constexpr const_axis(const edge_type(&a)[N]): _edges(a), _ne(N - 1) {}
 
-  constexpr size_type nedges() _CN { return _ne+1; }
-  constexpr size_type nbins () _CN { return _ne; }
+  constexpr size_type nedges() const noexcept { return _ne+1; }
+  constexpr size_type nbins () const noexcept { return _ne; }
 
-  constexpr edge_cref edge(size_type i) _CN { return _edges[i]; }
+  constexpr edge_cref edge(size_type i) const noexcept { return _edges[i]; }
 
-  constexpr edge_cref min() _CN { return _edges[0]; }
-  constexpr edge_cref max() _CN { return _edges[_ne]; }
+  constexpr edge_cref min() const noexcept { return _edges[0]; }
+  constexpr edge_cref max() const noexcept { return _edges[_ne]; }
 
-  constexpr edge_cref lower(size_type bin) _CN { return _edges[bin-1]; }
-  constexpr edge_cref upper(size_type bin) _CN { return _edges[bin]; }
+  constexpr edge_cref lower(size_type bin) const noexcept
+  { return _edges[bin-1]; }
+  constexpr edge_cref upper(size_type bin) const noexcept
+  { return _edges[bin]; }
 
-  constexpr size_type find_bin(edge_cref x) _CN {
+  constexpr size_type find_bin(edge_cref x) const noexcept {
     size_type i = 0, j = 0, count = _ne, step = 0;
 
     if (!(x < _edges[_ne])) i = _ne + 1;
@@ -380,14 +377,13 @@ public:
     }
     return i;
   }
-  constexpr size_type operator[](edge_cref x) _CN { return find_bin(x); }
-  inline size_type vfind_bin(edge_cref x) _CN { return find_bin(x); }
+  constexpr size_type operator[](edge_cref x) const noexcept
+  { return find_bin(x); }
+  inline size_type vfind_bin(edge_cref x) const noexcept
+  { return find_bin(x); }
 };
 
 // ==================================================================
 } // end namespace ivanp
-
-#undef _CN
-#undef _CNN
 
 #endif
