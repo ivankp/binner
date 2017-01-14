@@ -85,6 +85,20 @@ int main(int argc, char* argv[])
   test_cmp( a1.min(), 1 )
   test_cmp( a1.max(), 4 )
 
+  BR
+  ivanp::container_axis<const std::vector<int>&> a2(a1.edges());
+  print_type<decltype(a2)>();
+
+  // ivanp::container_axis<std::vector<int>> a2 = a1;
+  // ivanp::container_axis<std::array<double,4>> a1({1.,2.,3.,4.});
+
+  test_cmp( sizeof(a2), (sizeof(void*)*2) )
+  test_cmp( a2[0.5], 0 )
+  test_cmp( a2[2.5], 2 )
+  test_cmp( a2[4.5], 4 )
+  test_cmp( a2.min(), 1 )
+  test_cmp( a2.max(), 4 )
+
   // ================================================================
   BR
   ivanp::ref_axis<int> a3(&a1);

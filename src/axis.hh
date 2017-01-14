@@ -76,9 +76,12 @@ public:
 // Container Axis ===================================================
 
 template <typename Container>
-class container_axis final: public abstract_axis<typename Container::value_type> {
+class container_axis final: public abstract_axis<
+  typename std::remove_reference_t<Container>::value_type
+> {
 public:
-  using base_type = abstract_axis<typename Container::value_type>;
+  using base_type = abstract_axis<
+    typename std::remove_reference_t<Container>::value_type>;
   using size_type = typename base_type::size_type;
   using edge_type = typename base_type::edge_type;
   using edge_cref = typename base_type::edge_cref;
@@ -92,9 +95,15 @@ public:
   ~container_axis() = default;
 
   container_axis(const container_type& edges): _edges(edges) { }
+  template <typename C=container_type,
+            std::enable_if_t<!std::is_reference<C>::value>* = nullptr>
   container_axis(container_type&& edges): _edges(std::move(edges)) { }
+
   container_axis(const container_axis& axis): _edges(axis._edges) { }
+  template <typename C=container_type,
+            std::enable_if_t<!std::is_reference<C>::value>* = nullptr>
   container_axis(container_axis&& axis): _edges(std::move(axis._edges)) { }
+
   template <typename T, typename C=container_type,
             std::enable_if_t<!is_std_array<C>::value>* = nullptr>
   container_axis(std::initializer_list<T> edges): _edges(edges) { }
@@ -108,14 +117,19 @@ public:
     _edges = edges;
     return *this;
   }
+  template <typename C=container_type,
+            std::enable_if_t<!std::is_reference<C>::value>* = nullptr>
   container_axis& operator=(container_type&& edges) {
     _edges = std::move(edges);
     return *this;
   }
+
   container_axis& operator=(const container_axis& axis) {
     _edges = axis._edges;
     return *this;
   }
+  template <typename C=container_type,
+            std::enable_if_t<!std::is_reference<C>::value>* = nullptr>
   container_axis& operator=(container_axis&& axis) {
     _edges = std::move(axis._edges);
     return *this;
