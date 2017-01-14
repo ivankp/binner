@@ -39,6 +39,7 @@ public:
   virtual size_type nedges() const = 0;
 
   virtual size_type vfind_bin(edge_cref x) const = 0;
+  inline  size_type  find_bin(edge_cref x) const { return vfind_bin(x); }
 
   virtual edge_cref edge(size_type i) const = 0;
   virtual edge_cref min() const = 0;
@@ -246,15 +247,75 @@ public:
 
 };
 
+// Index Axis =======================================================
+
+template <bool Inherit=false>
+class index_axis final: public std::conditional_t<Inherit,
+  abstract_axis<ivanp::axis_size_type>, axis_base>
+{
+public:
+  using base_type = std::conditional_t<Inherit,
+    abstract_axis<ivanp::axis_size_type>, axis_base>;
+  using edge_type = ivanp::axis_size_type;
+  using edge_cref = const_ref_if_not_scalar_t<edge_type>;
+  using size_type = ivanp::axis_size_type;
+
+private:
+  edge_type _min, _max;
+
+public:
+  index_axis() = default;
+  ~index_axis() = default;
+  constexpr index_axis(edge_cref min, edge_cref max)
+  : _min(std::min(min,max)), _max(std::max(min,max)) { }
+  constexpr index_axis(const index_axis& axis)
+  : _min(axis._min), _max(axis._max) { }
+  constexpr index_axis& operator=(const index_axis& axis) {
+    _min = axis._min;
+    _max = axis._max;
+    return *this;
+  }
+
+  constexpr size_type nbins () const noexcept { return _max-_min; }
+  constexpr size_type nedges() const noexcept { return _max-_min+1; }
+
+  constexpr edge_cref edge(size_type i) const noexcept { return _min + i; }
+
+  constexpr edge_cref min() const noexcept { return _min; }
+  constexpr edge_cref max() const noexcept { return _max; }
+
+  constexpr edge_cref lower(size_type bin) const noexcept {return edge(bin-1);}
+  constexpr edge_cref upper(size_type bin) const noexcept {return edge(bin); }
+
+  template <typename T>
+  constexpr size_type find_bin(const T& x) const noexcept {
+    if (x < _min) return 0;
+    if (!(x < _max)) return _max-_min+1;
+    return x-_min+1;
+  }
+
+  constexpr size_type vfind_bin(edge_cref x) const noexcept
+  { return find_bin(x); }
+
+  template <typename T>
+  constexpr size_type operator[](const T& x) const noexcept
+  { return find_bin(x); }
+
+};
+
 // Indirect Axis ====================================================
 
-template <typename EdgeType, typename Ref = const abstract_axis<EdgeType>*>
-class ref_axis final: public abstract_axis<EdgeType> {
+template <typename EdgeType, typename Ref = const abstract_axis<EdgeType>*,
+          bool Inherit = false>
+class ref_axis final: public std::conditional_t<Inherit,
+  abstract_axis<EdgeType>, axis_base>
+{
 public:
-  using base_type = abstract_axis<EdgeType>;
-  using size_type = typename base_type::size_type;
-  using edge_type = typename base_type::edge_type;
-  using edge_cref = typename base_type::edge_cref;
+  using base_type = std::conditional_t<Inherit,
+    abstract_axis<EdgeType>, axis_base>;
+  using edge_type = EdgeType;
+  using edge_cref = const_ref_if_not_scalar_t<edge_type>;
+  using size_type = ivanp::axis_size_type;
   using axis_ref  = Ref;
 
 private:
