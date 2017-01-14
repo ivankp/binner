@@ -72,7 +72,7 @@ int main(int argc, char* argv[])
 
   // ================================================================
   BR
-  ivanp::container_axis<std::vector<int>> a1({1,2,3,4});
+  ivanp::container_axis<std::vector<int>,true> a1({1,2,3,4});
   print_type<decltype(a1)>();
 
   // ivanp::container_axis<std::vector<int>> a2 = a1;
@@ -86,7 +86,7 @@ int main(int argc, char* argv[])
   test_cmp( a1.max(), 4 )
 
   BR
-  ivanp::container_axis<const std::vector<int>&> a2(a1.edges());
+  ivanp::container_axis<const std::vector<int>&,true> a2(a1.edges());
   print_type<decltype(a2)>();
 
   // ivanp::container_axis<std::vector<int>> a2 = a1;

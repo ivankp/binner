@@ -64,19 +64,25 @@ public:
   }
 };
 
+// Blank axis base ==================================================
+
+struct axis_base { };
+
 // Container Axis ===================================================
 
-template <typename Container>
-class container_axis final: public abstract_axis<
-  typename std::decay_t<Container>::value_type
-> {
+template <typename Container, bool Inherit=false>
+class container_axis final: public std::conditional_t<Inherit,
+  abstract_axis<typename std::decay_t<Container>::value_type>,
+  axis_base>
+{
 public:
-  using base_type = abstract_axis<
-    typename std::decay_t<Container>::value_type>;
-  using size_type = typename base_type::size_type;
-  using edge_type = typename base_type::edge_type;
-  using edge_cref = typename base_type::edge_cref;
+  using base_type = std::conditional_t<Inherit,
+    abstract_axis<typename std::decay_t<Container>::value_type>,
+    axis_base>;
   using container_type = Container;
+  using edge_type = typename std::decay_t<container_type>::value_type;
+  using edge_cref = const_ref_if_not_scalar_t<edge_type>;
+  using size_type = ivanp::axis_size_type;
 
 private:
   container_type _edges;
@@ -160,13 +166,16 @@ public:
 
 // Uniform Axis =====================================================
 
-template <typename EdgeType>
-class uniform_axis final: public abstract_axis<EdgeType> {
+template <typename EdgeType, bool Inherit=false>
+class uniform_axis final: public std::conditional_t<Inherit,
+  abstract_axis<EdgeType>, axis_base>
+{
 public:
-  using base_type = abstract_axis<EdgeType>;
-  using size_type = typename base_type::size_type;
-  using edge_type = typename base_type::edge_type;
-  using edge_cref = typename base_type::edge_cref;
+  using base_type = std::conditional_t<Inherit,
+    abstract_axis<EdgeType>, axis_base>;
+  using edge_type = EdgeType;
+  using edge_cref = const_ref_if_not_scalar_t<edge_type>;
+  using size_type = ivanp::axis_size_type;
 
 private:
   size_type _nbins;
@@ -334,13 +343,16 @@ inline decltype(auto) make_shared_axis(const std::array<T,N>& edges) {
 
 // Constexpr Axis ===================================================
 
-template <typename EdgeType>
-class const_axis final: public abstract_axis<EdgeType> {
+template <typename EdgeType, bool Inherit=false>
+class const_axis final: public std::conditional_t<Inherit,
+  abstract_axis<EdgeType>, axis_base>
+{
 public:
-  using base_type = abstract_axis<EdgeType>;
-  using size_type = typename base_type::size_type;
-  using edge_type = typename base_type::edge_type;
-  using edge_cref = typename base_type::edge_cref;
+  using base_type = std::conditional_t<Inherit,
+    abstract_axis<EdgeType>, axis_base>;
+  using edge_type = EdgeType;
+  using edge_cref = const_ref_if_not_scalar_t<edge_type>;
+  using size_type = ivanp::axis_size_type;
 
 private:
   const edge_type* _edges;

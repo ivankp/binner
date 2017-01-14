@@ -40,6 +40,7 @@ int main(int argc, char* argv[])
 
   ivanp::binner<double> h1( {10,0,1} );
   print_type<decltype(h1)::axis_type<0>>();
+  print_type<decltype(h1)::axis_type<0>::base_type>();
 
   test( decltype(h1)::naxes )
   test( sizeof(h1) )
@@ -55,10 +56,10 @@ int main(int argc, char* argv[])
   BR
 
   ivanp::binner<double, std::tuple<
-    ivanp::axis_spec<ivanp::ref_axis<double>>,
+    ivanp::axis_spec<const ivanp::uniform_axis<double>&>,
     // ivanp::axis_spec<ivanp::container_axis<std::vector<double>>,false,false>
     ivanp::axis_spec<ivanp::container_axis<std::array<double,3>>,false,false>
-  >/*, std::array<double,24>*/> h2( &h1.axis(), {1.,2.5,5.} );
+  >/*, std::array<double,24>*/> h2( h1.axis(), {1.,2.5,5.} );
   using h2_t = decltype(h2);
 
   // print_type<h2_t>(); BR
@@ -67,7 +68,7 @@ int main(int argc, char* argv[])
 
   test_cmp( h2_t::naxes, 2 )
   test_cmp( sizeof(h2),
-    sizeof(h2_t::axis_type<0>) +
+    8 +
     sizeof(h2_t::axis_type<1>) +
     sizeof(h2_t::container_type) )
   test( sizeof(h2.axis<0>()) )
@@ -97,18 +98,6 @@ int main(int argc, char* argv[])
 
   h2.fill(0.2,1.5,42);
   test_cmp( h2.bin(3,0), 42 )
-
-  BR
-  ivanp::binner<double, std::tuple<
-    ivanp::axis_spec<const ivanp::uniform_axis<double>&>
-  >> h3( h1.axis() );
-  print_type<decltype(h3)::axis_spec<0>>();
-
-  test( decltype(h3)::naxes )
-  test( sizeof(h3) )
-  test( h3.axis().nbins() )
-  test( h3.axis().min() )
-  test( h3.axis().max() )
 
   return 0;
 }
