@@ -98,5 +98,17 @@ int main(int argc, char* argv[])
   h2.fill(0.2,1.5,42);
   test_cmp( h2.bin(3,0), 42 )
 
+  BR
+  ivanp::binner<double, std::tuple<
+    ivanp::axis_spec<const ivanp::uniform_axis<double>&>
+  >> h3( h1.axis() );
+  print_type<decltype(h3)::axis_spec<0>>();
+
+  test( decltype(h3)::naxes )
+  test( sizeof(h3) )
+  test( h3.axis().nbins() )
+  test( h3.axis().min() )
+  test( h3.axis().max() )
+
   return 0;
 }

@@ -77,11 +77,11 @@ public:
 
 template <typename Container>
 class container_axis final: public abstract_axis<
-  typename std::remove_reference_t<Container>::value_type
+  typename std::decay_t<Container>::value_type
 > {
 public:
   using base_type = abstract_axis<
-    typename std::remove_reference_t<Container>::value_type>;
+    typename std::decay_t<Container>::value_type>;
   using size_type = typename base_type::size_type;
   using edge_type = typename base_type::edge_type;
   using edge_cref = typename base_type::edge_cref;
