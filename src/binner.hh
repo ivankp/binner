@@ -45,7 +45,7 @@ public:
   using index_array_type = std::array<size_type,naxes>;
   using index_array_cref = const index_array_type&;
 
-  static_assert(naxes>0);
+  static_assert(naxes>0,"");
 
 private:
   axes_tuple _axes;
@@ -120,6 +120,19 @@ public:
   binner(typename Ax::axis... axes)
   : _axes{std::forward<typename Ax::axis>(axes)...}, _bins{} { }
 
+  binner(const binner& o): _axes(o._axes), _bins(o._bins) { }
+  binner(binner&& o): _axes(std::move(o._axes)), _bins(std::move(o._bins)) { }
+  binner& operator=(const binner& o) {
+    _axes = o._axes;
+    _bins = o._bins;
+    return *this;
+  }
+  binner& operator=(binner&& o) {
+    _axes = std::move(o._axes);
+    _bins = std::move(o._bins);
+    return *this;
+  }
+
   template <unsigned I=0>
   constexpr const axis_type<I>& axis() const noexcept {
     return std::get<I>(_axes);
@@ -129,8 +142,8 @@ public:
     return nbins_total_impl<naxes-1>();
   }
 
-  constexpr const container_type& bins() const noexcept { return _bins; }
-  constexpr container_type& bins() noexcept { return _bins; }
+  inline const container_type& bins() const noexcept { return _bins; }
+  inline container_type& bins() noexcept { return _bins; }
 
   constexpr size_type index(replace_t<size_type,Ax>... ii) const noexcept {
     return index_impl(ii...);
@@ -157,12 +170,12 @@ public:
 
   template <typename... Args>
   inline size_type find_bin(const Args&... args) const {
-    static_assert(sizeof...(Args)==naxes);
+    static_assert(sizeof...(Args)==naxes,"");
     return find_bin_impl(args...);
   }
   template <typename... Args>
   inline size_type find_bin(const std::tuple<Args...>& args) const {
-    static_assert(sizeof...(Args)==naxes);
+    static_assert(sizeof...(Args)==naxes,"");
     return find_bin_tuple(args,std::make_index_sequence<naxes>());
   }
 
@@ -179,6 +192,11 @@ public:
       find_bin_tuple(tup,std::make_index_sequence<naxes>()),
       tup, index_sequence_tail<naxes,sizeof...(Args)>()
     );
+  }
+  template <typename... Args>
+  inline std::enable_if_t<(sizeof...(Args)>=naxes),size_type>
+  operator()(const Args&... args) {
+    return fill(args...);
   }
 };
 
