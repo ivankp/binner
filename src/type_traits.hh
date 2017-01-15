@@ -24,6 +24,7 @@ using mp_or = std::integral_constant< bool, !mp_and< !B... >::value >;
 
 // ******************************************************************
 
+#ifdef _GLIBCXX_UTILITY
 template <typename Seq, typename Seq::value_type Inc>
 struct increment_integer_sequence;
 template <typename T, T... I, T Inc>
@@ -34,6 +35,7 @@ struct increment_integer_sequence<std::integer_sequence<T,I...>, Inc> {
 template <size_t A, size_t B>
 using index_sequence_tail
   = typename increment_integer_sequence<std::make_index_sequence<B-A>,A>::type;
+#endif
 
 // ******************************************************************
 
@@ -50,17 +52,23 @@ using const_ref_if_not_scalar_t = typename const_ref_if_not_scalar<T>::type;
 
 // IS ***************************************************************
 
+#ifdef _GLIBCXX_ARRAY
 template <typename> struct is_std_array: std::false_type { };
 template <typename T, size_t N>
 struct is_std_array<std::array<T,N>>: std::true_type { };
+#endif
 
+#ifdef _GLIBCXX_VECTOR
 template <typename> struct is_std_vector: std::false_type { };
 template <typename T, typename Alloc>
 struct is_std_vector<std::vector<T,Alloc>>: std::true_type { };
+#endif
 
+#ifdef _GLIBCXX_UTILITY
 template <typename> struct is_integer_sequence: std::false_type { };
 template <typename T, T... Ints>
 struct is_integer_sequence<std::integer_sequence<T,Ints...>>: std::true_type { };
+#endif
 
 // Expression traits ************************************************
 
