@@ -104,7 +104,7 @@ int main(int argc, char* argv[])
   ivanp::ref_axis<int> a3(&a1);
   print_type<decltype(a3)>();
 
-  test_cmp( sizeof(a3), (2*sizeof(void*)) )
+  test_cmp( sizeof(a3), (sizeof(void*)) )
   test_cmp( a3[3.7], 3 )
 
   { // ==============================================================

@@ -7,6 +7,9 @@ namespace ivanp {
 
 // ******************************************************************
 
+template <typename... T> struct make_void { typedef void type; };
+template <typename... T> using void_t = typename make_void<T...>::type;
+
 template <typename New, typename Old> using replace_t = New;
 
 // boolean compositing **********************************************
@@ -47,17 +50,91 @@ using const_ref_if_not_scalar_t = typename const_ref_if_not_scalar<T>::type;
 
 // IS ***************************************************************
 
-template <typename T> struct is_std_array: std::false_type { };
+template <typename> struct is_std_array: std::false_type { };
 template <typename T, size_t N>
 struct is_std_array<std::array<T,N>>: std::true_type { };
 
-template <typename T> struct is_std_vector: std::false_type { };
+template <typename> struct is_std_vector: std::false_type { };
 template <typename T, typename Alloc>
 struct is_std_vector<std::vector<T,Alloc>>: std::true_type { };
 
-template <typename T> struct is_integer_sequence: std::false_type { };
+template <typename> struct is_integer_sequence: std::false_type { };
 template <typename T, T... Ints>
 struct is_integer_sequence<std::integer_sequence<T,Ints...>>: std::true_type { };
+
+// Expression traits ************************************************
+
+// void_t technique from Walter Brown
+// https://www.youtube.com/watch?v=Am2is2QCvxY
+// https://www.youtube.com/watch?v=a0FliKwcwXE
+
+template <typename, typename = void> // ++x
+struct has_pre_increment : std::false_type { };
+template <typename T>
+struct has_pre_increment<T,
+  void_t<decltype( ++std::declval<T&>() )>
+> : std::true_type { };
+
+template <typename, typename = void> // x++
+struct has_post_increment : std::false_type { };
+template <typename T>
+struct has_post_increment<T,
+  void_t<decltype( std::declval<T&>()++ )>
+> : std::true_type { };
+
+template <typename, typename = void> // --x
+struct has_pre_decrement : std::false_type { };
+template <typename T>
+struct has_pre_decrement<T,
+  void_t<decltype( --std::declval<T&>() )>
+> : std::true_type { };
+
+template <typename, typename = void> // x--
+struct has_post_decrement : std::false_type { };
+template <typename T>
+struct has_post_decrement<T,
+  void_t<decltype( std::declval<T&>()-- )>
+> : std::true_type { };
+
+template <typename, typename, typename = void> // x += r
+struct has_plus_eq : std::false_type { };
+template <typename T, typename R>
+struct has_plus_eq<T,R,
+  void_t<decltype( std::declval<T&>()+=std::declval<R>() )>
+> : std::true_type { };
+
+template <typename, typename, typename = void> // x -= r
+struct has_minus_eq : std::false_type { };
+template <typename T, typename R>
+struct has_minus_eq<T,R,
+  void_t<decltype( std::declval<T&>()-=std::declval<R>() )>
+> : std::true_type { };
+
+template <typename T, typename... Args> // x(args...)
+class is_callable {
+  template <typename, typename = void>
+  struct impl: std::false_type { };
+  template <typename U>
+  struct impl<U,
+    void_t<decltype( std::declval<U&>()(std::declval<Args>()...) )>
+  > : std::true_type { };
+public:
+  static constexpr bool value = impl<T>::value;
+};
+
+template <typename T, typename... Args> // x(args...)
+class is_constructible {
+  template <typename, typename = void>
+  struct impl: std::false_type { };
+  template <typename U>
+  struct impl<U,
+    void_t<decltype( U(std::declval<Args>()...) )>
+  > : std::true_type { };
+public:
+  static constexpr bool value = impl<T>::value;
+};
+
+// ******************************************************************
 
 } // end namespace ivanp
 
