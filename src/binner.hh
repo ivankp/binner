@@ -267,7 +267,7 @@ public:
       find_bin_tuple(tup,std::make_index_sequence<naxes>());
     if (bin == size_type(-1)) return size_type(-1);
     return fill_bin_tuple( bin,
-      tup, make_index_range<naxes,sizeof...(Args)>()
+      tup, ivanp::seq::make_index_range<naxes,sizeof...(Args)>()
     );
   }
   template <typename... Args>

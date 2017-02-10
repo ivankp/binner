@@ -4,4 +4,5 @@
 /test/find_bin
 /test/binner
 /test/slice
+/test/seq_traits
 .*.swp

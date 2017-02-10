@@ -64,11 +64,12 @@ auto make_ranges(
   typename std::tuple_element_t<I,std::tuple<std::decay_t<A>...>>::edge_type,
   2>...>
 {
+  using namespace ivanp::seq;
   using under = std::integer_sequence<bool,!U...>;
   constexpr auto ImA = sizeof...(I)-sizeof...(A);
   return { {
-    std::get<I>(axes).lower( std::get<I+ImA>(ii)+seq_element<I,under>::value ),
-    std::get<I>(axes).upper( std::get<I+ImA>(ii)+seq_element<I,under>::value )
+    std::get<I>(axes).lower( std::get<I+ImA>(ii)+element<I,under>::value ),
+    std::get<I>(axes).upper( std::get<I+ImA>(ii)+element<I,under>::value )
   }... };
 }
 
@@ -101,7 +102,7 @@ void slice(
   using namespace ivanp::detail::slice;
 
   using head = std::make_index_sequence<D>;
-  using tail = make_index_range<D,sizeof...(I)>;
+  using tail = seq::make_index_range<D,sizeof...(I)>;
 
   const auto& axes = hist.axes();
   const auto reordered_axes = std::tie(as_const(std::get<I>(axes))...);
