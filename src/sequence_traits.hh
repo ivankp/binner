@@ -51,6 +51,28 @@ struct seq_element {
   static constexpr auto value = seq_front<right_subseq_t<I,Seq>>::value;
 };
 
+// invert ***********************************************************
+
+template <typename S, typename I
+  = std::make_integer_sequence<typename S::value_type, S::size()>
+> struct seq_inv;
+template <typename T, T... S, T... I>
+class seq_inv<std::integer_sequence<T,S...>,std::integer_sequence<T,I...>> {
+  using seq = std::integer_sequence<T,S...>;
+  typedef char arr[seq::size()];
+
+  constexpr static auto inv(T j) {
+    arr aseq = { seq_element<I,seq>::value... };
+    arr ainv = { I... };
+    for (T i=0; i<seq::size(); ++i) ainv[aseq[i]] = i;
+    return ainv[j];
+  }
+
+public:
+  using type = std::integer_sequence<T,inv(I)...>;
+};
+template <typename S> using seq_inv_t = typename seq_inv<S>::type;
+
 // ******************************************************************
 
 } // end namespace ivanp
