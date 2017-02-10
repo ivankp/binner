@@ -2,8 +2,20 @@
 #define IVANP_BINNER_SLICE_HH
 
 #include "binner.hh"
+#include <memory>
 
 namespace ivanp {
+
+template <typename Axis>
+auto make_shared_vector_of_edges(const Axis& axis) {
+  using vec_t = std::vector<typename Axis::edge_type>;
+  const auto n = axis.nedges();
+  vec_t vec;
+  vec.reserve(n);
+  for (typename Axis::size_type i=0; i<n; ++i)
+    vec.emplace_back(axis.edge(i));
+  return std::make_shared<const vec_t>(std::move(vec));
+}
 
 namespace detail { namespace slice {
 
@@ -43,7 +55,7 @@ public:
 };
 
 template <typename... A, bool... U, size_t... I>
-inline auto make_ranges(
+auto make_ranges(
   const std::tuple<A...>& axes,
   const std::array<ivanp::axis_size_type,sizeof...(I)>& ii,
   std::integer_sequence<bool,U...>,
@@ -58,6 +70,11 @@ inline auto make_ranges(
     std::get<I>(axes).lower( std::get<I+ImA>(ii)+seq_element<I,under>::value ),
     std::get<I>(axes).upper( std::get<I+ImA>(ii)+seq_element<I,under>::value )
   }... };
+}
+
+template <typename... A, size_t... I>
+auto get_edges(const std::tuple<A...>& axes, std::index_sequence<I...>) {
+  return std::make_tuple(make_shared_vector_of_edges( std::get<I>(axes) )...);
 }
 
 } }
@@ -83,14 +100,19 @@ void slice(
     "cannot leave more than total number of dimensions unsliced");
   using namespace ivanp::detail::slice;
 
+  using head = std::make_index_sequence<D>;
   using tail = make_index_range<D,sizeof...(I)>;
 
-  constexpr auto nover = std::make_tuple(Ax::nover::value...);
   const auto& axes = hist.axes();
-
   const auto reordered_axes = std::tie(as_const(std::get<I>(axes))...);
+
+  constexpr auto nover = std::make_tuple(Ax::nover::value...);
   using under = std::integer_sequence<bool,
     std::tuple_element_t<I,std::tuple<Ax...>>::under::value...>;
+
+  const auto edges = get_edges(reordered_axes, head{});
+  for (auto e : *std::get<0>(edges)) std::cout <<' '<< e;
+  std::cout << std::endl;
 
   counter<tail::size()> cnt(
     std::make_tuple(
