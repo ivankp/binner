@@ -3,4 +3,5 @@
 /test/axis
 /test/find_bin
 /test/binner
+/test/slice
 .*.swp

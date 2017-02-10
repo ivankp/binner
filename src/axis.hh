@@ -6,11 +6,15 @@
 #include <algorithm>
 #include <cmath>
 #include <utility>
+#include <vector>
 #include <stdexcept>
 #include <sstream>
 #include <memory>
+#include <limits>
 
 #include "type_traits.hh"
+
+#include <iostream>
 
 namespace ivanp {
 
@@ -63,6 +67,7 @@ public:
       throw std::range_error(ss.str());
     }
   }
+
 };
 
 // Blank axis base ==================================================
@@ -224,39 +229,19 @@ public:
   inline size_type operator[](const T& x) const noexcept
   { return find_bin(x); }
 
-  // exact edge calculation
-  edge_type exact_edge(size_type i) const noexcept {
-    auto x = edge(i);
-    const auto j = find_bin(x);
-    const auto i1 = i + 1;
-
-    if (j < i1) {
-      for ( ; find_bin(x = std::nextafter(x,x+1)) < i1; );
-    } else {
-      auto x2 = x;
-      for ( ; find_bin(x2 = std::nextafter(x2,x2-1)) == i1; ) x = x2;
-    }
-    return x;
-  }
-  inline edge_cref exact_lower(size_type bin) const noexcept {
-    return exact_edge(bin-1);
-  }
-  inline edge_cref exact_upper(size_type bin) const noexcept {
-    return exact_edge(bin);
-  }
-
 };
 
 // Index Axis =======================================================
 
-template <bool Inherit=false>
+template <typename EdgeType = ivanp::axis_size_type, bool Inherit=false>
 class index_axis final: public std::conditional_t<Inherit,
   abstract_axis<ivanp::axis_size_type>, axis_base>
 {
+  static_assert(std::is_integral<EdgeType>::value,"");
 public:
   using base_type = std::conditional_t<Inherit,
     abstract_axis<ivanp::axis_size_type>, axis_base>;
-  using edge_type = ivanp::axis_size_type;
+  using edge_type = EdgeType;
   using edge_cref = const_ref_if_not_scalar_t<edge_type>;
   using size_type = ivanp::axis_size_type;
 
@@ -324,6 +309,8 @@ private:
 public:
   ref_axis() = default;
   ~ref_axis() = default;
+
+  ref_axis(abstract_axis<EdgeType>* ptr): _ref(ptr) { }
 
   ref_axis(axis_ref ref): _ref(ref) { }
   ref_axis& operator=(axis_ref ref) {
@@ -454,6 +441,7 @@ public:
   { return find_bin(x); }
   inline size_type vfind_bin(edge_cref x) const noexcept
   { return find_bin(x); }
+
 };
 
 // ==================================================================
