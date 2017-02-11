@@ -2,7 +2,6 @@
 #define IVANP_BINNER_SLICE_HH
 
 #include "binner.hh"
-#include "catstr.hh"
 #include <memory>
 
 namespace ivanp {
@@ -138,12 +137,33 @@ struct binner_slice<Bin, const std::tuple<const Ax&...>,
   edges_type  edges;
   bins_type   bins;
 
-  std::string name(const index_to_type<IT,std::string>&... str) const {
-    const auto _str = std::tie(str...);
-    return cat(
-      cat( '_', std::get<IT-n_dim>(_str),
-           '[', std::get<IT-n_dim>(ranges)[0],
-           ',', std::get<IT-n_dim>(ranges)[1], ')' )... );
+  template <size_t I>
+  const auto& get_edges() const noexcept { return *std::get<I>(edges); }
+
+  template <typename... L>
+  struct name_proxy {
+    static_assert(sizeof...(L) == sizeof...(IT),"");
+    const binner_slice *ptr;
+    const std::tuple<L...> labels;
+
+    template <size_t I=0>
+    inline std::enable_if_t<I==sizeof...(IT), std::ostream>&
+    impl(std::ostream& os) const { return os; }
+    template <size_t I=0>
+    inline std::enable_if_t<I!=sizeof...(IT), std::ostream>&
+    impl(std::ostream& os) const {
+      os << '_' << std::get<I>(labels)
+         << '[' << std::get<I>(ptr->ranges)[0]
+         << ',' << std::get<I>(ptr->ranges)[1] << ')';
+      return impl<I+1>(os);
+    }
+
+    friend std::ostream& operator<<( std::ostream& os, const name_proxy& p)
+    { return p.impl(os); }
+  };
+  template <typename... L>
+  inline auto name(L&&... labels) const noexcept -> name_proxy<L...> {
+    return { this, std::forward_as_tuple(std::forward<L>(labels)...) };
   }
 };
 
@@ -227,6 +247,17 @@ template <size_t D=1, // slicing into chunks of D dimensions
 inline auto slice( // overload for default axis order
   const binner<Bin,std::tuple<Ax...>,Container,Filler>& hist
 ) { return slice<D>(hist,std::index_sequence_for<Ax...>{}); }
+
+template <size_t D=1, // slicing into chunks of D dimensions
+          size_t... I,
+          typename Bin,
+          typename... Ax,
+          typename Container,
+          typename Filler
+>
+inline auto slice( // overload for default axis order
+  const binner<Bin,std::tuple<Ax...>,Container,Filler>& hist
+) { return slice<D>(hist,std::index_sequence<I...>{}); }
 
 
 } // end namespace ivanp

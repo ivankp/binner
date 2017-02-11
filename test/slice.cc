@@ -1,6 +1,7 @@
 // Written by Ivan Pogrebnyak
 
 #include <iostream>
+#include <iomanip>
 
 #define test(var) \
   std::cout << "\033[36m" << #var << "\033[0m = " << var << std::endl;
@@ -10,11 +11,11 @@
 using std::cout;
 using std::endl;
 
-int main(int argc, char* argv[])
+int main()
 {
   ivanp::binner<double, std::tuple<
     ivanp::axis_spec<ivanp::uniform_axis<double>,false,false>,
-    ivanp::axis_spec<ivanp::uniform_axis<int>,false,false>,
+    ivanp::axis_spec<ivanp::uniform_axis<int>>,
     ivanp::axis_spec<ivanp::uniform_axis<float>,false,false>
   >> hist( {3,0,10}, {5,-2,3}, {2,0,5} );
 
@@ -26,19 +27,21 @@ int main(int argc, char* argv[])
   }
 
   // const auto h1 = ivanp::slice(hist);
-  const auto h1 = ivanp::slice<1>(hist,std::index_sequence<1,2,0>{});
+  // const auto h1 = ivanp::slice<1>(hist,std::index_sequence<1,2,0>{});
+  const auto h1 = ivanp::slice<1,1,2,0>(hist);
 
   test( sizeof(decltype(h1)::value_type) )
 
   for (const auto& h : h1) {
-    cout << h.name("2","0") << endl;
+    cout << std::setprecision(3);
+    cout << h.name("2",0) << endl;
 
     cout << "nbins = " << h.bins.size() << endl;
 
     cout << "edges";
-    for (const auto e : *std::get<0>(h.edges)) cout << ' ' << e;
+    for (const auto e : h.get_edges<0>()) cout << ' ' << e;
     // cout << "\nedges";
-    // for (const auto e : *std::get<1>(h.edges)) cout << ' ' << e;
+    // for (const auto e : h.get_edges<1>()) cout << ' ' << e;
     cout << endl;
 
     cout << "bins";
