@@ -63,6 +63,21 @@ public:
   inline void reset() noexcept { _done = false; }
 };
 
+template <size_t I=0, size_t N>
+inline std::enable_if_t<I==N-1, ivanp::axis_size_type> index(
+  const std::array<const ivanp::axis_size_type*,N>& ii,
+  const std::array<ivanp::axis_size_type,N>& nn
+) noexcept {
+  return *std::get<I>(ii);
+}
+template <size_t I=0, size_t N>
+inline std::enable_if_t<I!=N-1, ivanp::axis_size_type> index(
+  const std::array<const ivanp::axis_size_type*,N>& ii,
+  const std::array<ivanp::axis_size_type,N>& nn
+) noexcept {
+  return *std::get<I>(ii) + std::get<I>(nn) * index<I+1>(ii,nn);
+}
+
 template <typename... A, bool... U, size_t... I>
 auto make_ranges(
   const std::tuple<A...>& axes,
@@ -147,52 +162,49 @@ auto slice(
 ) {
   static_assert( sizeof...(I) == sizeof...(Ax),
     "the number of indices must match the number of axes");
-  // static_assert( D,
-  //   "at least 1 dimension must be unsliced");
   static_assert( D <= sizeof...(I),
     "cannot leave more than total number of dimensions unsliced");
   using namespace ivanp::detail::slice;
 
+  using specs = std::tuple<Ax...>;
   using head = std::make_index_sequence<D>;
   using tail = seq::make_index_range<D,sizeof...(I)>;
   using inv  = seq::inverse_t<std::index_sequence<I...>>;
 
+  using under = std::integer_sequence<bool,
+    std::tuple_element_t<I,specs>::under::value...>;
+
   const auto& axes = hist.axes();
   const auto reordered_axes = std::tie(as_const(std::get<I>(axes))...);
 
-  // constexpr auto nover = std::make_tuple(Ax::nover::value...);
-  using nover = std::integer_sequence<unsigned,
-    std::tuple_element_t<I,std::tuple<Ax...>>::nover::value...>;
-  using under = std::integer_sequence<bool,
-    std::tuple_element_t<I,std::tuple<Ax...>>::under::value...>;
-
-  const auto nbins_total = std::make_tuple(
-    ( std::get<I>(axes).nbins() + seq::element<I,nover>::value )... );
+  const auto reordered_nbins = make_array<ivanp::axis_size_type>(
+    ( std::get<I>(axes).nbins()
+      + std::tuple_element_t<I,specs>::nover::value )... );
+  const auto nbins = sort(reordered_nbins, inv{});
 
   const auto edges = get_edges(reordered_axes, head{});
 
-  counter<tail::size()> tcnt(nbins_total, tail{});
-  counter<head::size()> hcnt(nbins_total, head{});
+  counter<tail::size()> tcnt(reordered_nbins, tail{});
+  counter<head::size()> hcnt(reordered_nbins, head{});
   const auto n_head_bins = hcnt.size();
 
-  const auto ii = sort(sort(
+  const auto ii = sort(
     cat_cptr(hcnt.ii(), tcnt.ii(),
       head{}, std::make_index_sequence<tail::size()>{}),
-    inv{}), inv{});
+    inv{});
 
   using slice_t = binner_slice<Bin, decltype(reordered_axes), head, tail>;
 
   std::vector<slice_t> slices;
   slices.reserve(tcnt.size());
 
+  const auto& hbins = hist.bins();
+
   for ( ; !tcnt; ++tcnt ) {
     std::vector<const Bin*> bins;
     bins.reserve(n_head_bins);
     for ( ; !hcnt; ++hcnt ) {
-      bins.emplace_back(&hist.bin(
-        ( *std::get<I>(ii)
-          + !seq::element<I,under>::value )...
-      ));
+      bins.emplace_back(&hbins[index(ii,nbins)]);
     }
     hcnt.reset();
 

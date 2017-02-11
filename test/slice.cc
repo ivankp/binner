@@ -13,17 +13,19 @@ using std::endl;
 int main(int argc, char* argv[])
 {
   ivanp::binner<double, std::tuple<
-    ivanp::axis_spec<ivanp::uniform_axis<double>,false,false>,
-    ivanp::axis_spec<ivanp::uniform_axis<int>>
+    ivanp::axis_spec<ivanp::uniform_axis<double>,false>,
+    ivanp::axis_spec<ivanp::uniform_axis<int>,false,false>
   >> hist( {3,0,10}, {5,-2,3} );
+
+  test( hist.nbins_total() )
 
   for (auto& bin : hist.bins()) {
     static int i = 0;
     bin = ++i;
   }
 
-  const auto h1 = ivanp::slice(hist);
-  // const auto h1 = ivanp::slice(hist,std::index_sequence<1,0>{});
+  // const auto h1 = ivanp::slice(hist);
+  const auto h1 = ivanp::slice(hist,std::index_sequence<1,0>{});
 
   test( sizeof(decltype(h1)::value_type) )
 
