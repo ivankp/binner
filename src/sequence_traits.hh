@@ -33,10 +33,23 @@ struct rsubseq {
   };
   using type = typename impl<N,Seq>::type;
 };
-template <typename Seq>
-struct rsubseq<0,Seq> { using type = Seq; };
+template <typename Seq> struct rsubseq<0,Seq> { using type = Seq; };
 template <size_t N, typename Seq>
 using rsubseq_t = typename rsubseq<N,Seq>::type;
+
+template <size_t N, typename Seq>
+struct lsubseq {
+  template <size_t _N, typename _Seq> struct impl;
+  template <size_t _N, typename T, T I1, T... II>
+  struct impl<_N,std::integer_sequence<T,II...,I1>> {
+    using type = typename
+      lsubseq<_N-1,std::integer_sequence<T,II...>>::type;
+  };
+  using type = typename impl<N,Seq>::type;
+};
+template <typename Seq> struct lsubseq<0,Seq> { using type = Seq; };
+template <size_t N, typename Seq>
+using lsubseq_t = typename lsubseq<N,Seq>::type;
 
 // sequence element *************************************************
 
