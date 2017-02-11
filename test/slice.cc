@@ -34,7 +34,7 @@ int main()
 
   for (const auto& h : h1) {
     cout << std::setprecision(3);
-    cout << h.name("2",0) << endl;
+    cout << h.name("var") << endl;
 
     cout << "nbins = " << h.bins.size() << endl;
 

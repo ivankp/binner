@@ -117,7 +117,7 @@ inline std::array<T,N> sort(std::array<T,N> arr, std::index_sequence<I...>) {
 template <typename Bin, typename Ax, typename Head, typename Tail>
 struct binner_slice;
 template <typename Bin, typename... Ax, size_t... IH, size_t... IT>
-struct binner_slice<Bin, const std::tuple<const Ax&...>,
+struct binner_slice<Bin, std::tuple<Ax...>,
   std::index_sequence<IH...>, std::index_sequence<IT...>
 > {
   using axes_tuple = std::tuple<Ax...>;
@@ -142,9 +142,23 @@ struct binner_slice<Bin, const std::tuple<const Ax&...>,
 
   template <typename... L>
   struct name_proxy {
-    static_assert(sizeof...(L) == sizeof...(IT),"");
+    static_assert(sizeof...(L) <= sizeof...(IT),
+      "cannot have more labels than dimensions");
     const binner_slice *ptr;
-    const std::tuple<L...> labels;
+    std::tuple<L...> labels;
+
+    template <size_t I, typename = void> struct label_type;
+    template <size_t I>
+    struct label_type<I,std::enable_if_t<(I<sizeof...(L))>> {
+      using type = decltype(std::get<I>(labels));
+    };
+
+    template <size_t I>
+    std::enable_if_t<!(I<sizeof...(L)),const char*>
+    label() const noexcept { return ""; }
+    template <size_t I>
+    std::enable_if_t<(I<sizeof...(L)),typename label_type<I>::type>
+    label() const noexcept { return std::get<I>(labels); }
 
     template <size_t I=0>
     inline std::enable_if_t<I==sizeof...(IT), std::ostream>&
@@ -152,7 +166,7 @@ struct binner_slice<Bin, const std::tuple<const Ax&...>,
     template <size_t I=0>
     inline std::enable_if_t<I!=sizeof...(IT), std::ostream>&
     impl(std::ostream& os) const {
-      os << '_' << std::get<I>(labels)
+      os << '_' << label<I>()
          << '[' << std::get<I>(ptr->ranges)[0]
          << ',' << std::get<I>(ptr->ranges)[1] << ')';
       return impl<I+1>(os);
@@ -195,6 +209,8 @@ auto slice(
 
   using under = std::integer_sequence<bool,
     std::tuple_element_t<I,specs>::under::value...>;
+  using reordered_axes_types = std::tuple<
+    typename std::tuple_element_t<I,specs>::axis...>;
 
   const auto& axes = hist.axes();
   const auto reordered_axes = std::tie(as_const(std::get<I>(axes))...);
@@ -215,7 +231,7 @@ auto slice(
       head{}, std::make_index_sequence<tail::size()>{}),
     inv{});
 
-  using slice_t = binner_slice<Bin, decltype(reordered_axes), head, tail>;
+  using slice_t = binner_slice<Bin, reordered_axes_types, head, tail>;
 
   std::vector<slice_t> slices;
   slices.reserve(tcnt.size());
