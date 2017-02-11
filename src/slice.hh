@@ -161,9 +161,11 @@ auto slice(
   std::index_sequence<I...>
 ) {
   static_assert( sizeof...(I) == sizeof...(Ax),
-    "the number of indices must match the number of axes");
-  static_assert( D <= sizeof...(I),
-    "cannot leave more than total number of dimensions unsliced");
+    "\033[33mthe number of indices must match the number of axes\033[0m");
+  static_assert( D > 0,
+    "\033[33mmust leave at least 1 dimension unsliced\033[0m");
+  static_assert( D < sizeof...(I),
+    "\033[33mnumber of unsliced dimensions must be less than total\033[0m");
   using namespace ivanp::detail::slice;
 
   using specs = std::tuple<Ax...>;

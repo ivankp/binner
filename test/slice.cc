@@ -13,9 +13,10 @@ using std::endl;
 int main(int argc, char* argv[])
 {
   ivanp::binner<double, std::tuple<
-    ivanp::axis_spec<ivanp::uniform_axis<double>,false>,
-    ivanp::axis_spec<ivanp::uniform_axis<int>,false,false>
-  >> hist( {3,0,10}, {5,-2,3} );
+    ivanp::axis_spec<ivanp::uniform_axis<double>,false,false>,
+    ivanp::axis_spec<ivanp::uniform_axis<int>,false,false>,
+    ivanp::axis_spec<ivanp::uniform_axis<float>,false,false>
+  >> hist( {3,0,10}, {5,-2,3}, {2,0,5} );
 
   test( hist.nbins_total() )
 
@@ -25,17 +26,19 @@ int main(int argc, char* argv[])
   }
 
   // const auto h1 = ivanp::slice(hist);
-  const auto h1 = ivanp::slice(hist,std::index_sequence<1,0>{});
+  const auto h1 = ivanp::slice<1>(hist,std::index_sequence<1,2,0>{});
 
   test( sizeof(decltype(h1)::value_type) )
 
   for (const auto& h : h1) {
-    cout << h.name("var") << endl;
+    cout << h.name("2","0") << endl;
 
     cout << "nbins = " << h.bins.size() << endl;
 
     cout << "edges";
     for (const auto e : *std::get<0>(h.edges)) cout << ' ' << e;
+    // cout << "\nedges";
+    // for (const auto e : *std::get<1>(h.edges)) cout << ' ' << e;
     cout << endl;
 
     cout << "bins";
