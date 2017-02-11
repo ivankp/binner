@@ -2,6 +2,7 @@
 #define IVANP_BINNER_SLICE_HH
 
 #include "binner.hh"
+#include "catstr.hh"
 #include <memory>
 
 namespace ivanp {
@@ -39,7 +40,6 @@ public:
 
   counter& operator++() noexcept {
     _next = false;
-    // std::cout << "++"; // test
     ++_ii[0];
     for (size_type i=0; i<N; ++i) {
       if (_ii[i] == _nn[i]) {
@@ -48,9 +48,7 @@ public:
         if (i==N-1) _done = true;
         else ++_ii[i+1];
       }
-      // std::cout << ' ' << _ii[i]; // test
     }
-    // std::cout << std::endl; // test
     return *this;
   }
 
@@ -118,9 +116,20 @@ struct binner_slice<Bin, const std::tuple<const Ax&...>,
     >>...>;
   using bins_type = std::vector<const Bin*>;
 
+  constexpr static auto n_dim = sizeof...(IH);
+  constexpr static auto n_extra_dim = sizeof...(IT);
+
   ranges_type ranges;
   edges_type  edges;
   bins_type   bins;
+
+  std::string name(const index_to_type<IT,std::string>&... str) const {
+    const auto _str = std::tie(str...);
+    return cat(
+      cat( '_', std::get<IT-n_dim>(_str),
+           '[', std::get<IT-n_dim>(ranges)[0],
+           ',', std::get<IT-n_dim>(ranges)[1], ')' )... );
+  }
 };
 
 } }
@@ -151,16 +160,16 @@ auto slice(
   const auto& axes = hist.axes();
   const auto reordered_axes = std::tie(as_const(std::get<I>(axes))...);
 
-  constexpr auto nover = std::make_tuple(Ax::nover::value...);
+  // constexpr auto nover = std::make_tuple(Ax::nover::value...);
+  using nover = std::integer_sequence<unsigned,
+    std::tuple_element_t<I,std::tuple<Ax...>>::nover::value...>;
   using under = std::integer_sequence<bool,
     std::tuple_element_t<I,std::tuple<Ax...>>::under::value...>;
 
   const auto nbins_total = std::make_tuple(
-    ( std::get<I>(axes).nbins() + std::get<I>(nover) )... );
+    ( std::get<I>(axes).nbins() + seq::element<I,nover>::value )... );
 
   const auto edges = get_edges(reordered_axes, head{});
-  // for (auto e : *std::get<0>(edges)) std::cout <<' '<< e; // test
-  // std::cout << std::endl; // test
 
   counter<tail::size()> tcnt(nbins_total, tail{});
   counter<head::size()> hcnt(nbins_total, head{});
@@ -177,20 +186,15 @@ auto slice(
   slices.reserve(tcnt.size());
 
   for ( ; !tcnt; ++tcnt ) {
-    // const auto ranges = make_ranges(
-    //   reordered_axes, tcnt.ii(), under{}, tail{}
-    // );
-    // test( std::tuple_size<decltype(ranges)>::value ) // test
-    // test( std::get<0>(ranges)[0] ) // test
-    // test( std::get<0>(ranges)[1] ) // test
-
     std::vector<const Bin*> bins;
     bins.reserve(n_head_bins);
     for ( ; !hcnt; ++hcnt ) {
-      bins.emplace_back(&hist.bin( *std::get<I>(ii)... ));
+      bins.emplace_back(&hist.bin(
+        ( *std::get<I>(ii)
+          + !seq::element<I,under>::value )...
+      ));
     }
     hcnt.reset();
-    test( bins.size() )
 
     slices.push_back({
       make_ranges( reordered_axes, tcnt.ii(), under{}, tail{} ),

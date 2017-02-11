@@ -25,9 +25,10 @@ int main(int argc, char* argv[])
   const auto h1 = ivanp::slice(hist);
   // const auto h1 = ivanp::slice(hist,std::index_sequence<1,0>{});
 
+  test( sizeof(decltype(h1)::value_type) )
+
   for (const auto& h : h1) {
-    cout << '[' << std::get<0>(h.ranges)[0] << ','
-         << std::get<0>(h.ranges)[1] << ')' << endl;
+    cout << h.name("var") << endl;
 
     cout << "nbins = " << h.bins.size() << endl;
 
