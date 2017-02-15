@@ -47,7 +47,7 @@ int main()
     cout << endl;
 
     cout << "bins";
-    for (const auto b : h->bins()) cout << ' ' << b.get();
+    for (const auto& b : h->bins()) cout << ' ' << b;
     cout << endl;
     cout << endl;
   }
