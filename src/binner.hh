@@ -40,9 +40,9 @@ public:
   template <unsigned I>
   using axis_spec = std::tuple_element_t<I,axes_specs>;
   template <unsigned I>
-  using axis_type = typename axis_spec<I>::axis;
+  using axis_type = std::decay_t<typename axis_spec<I>::axis>;
   template <unsigned I>
-  using edge_type = typename std::decay_t<axis_type<I>>::edge_type;
+  using edge_type = typename axis_type<I>::edge_type;
   using container_type = Container;
   using filler_type = Filler;
   using value_type = typename container_type::value_type;
@@ -177,6 +177,10 @@ public:
   : _axes{std::forward<typename Ax::axis>(axes)...}, _bins{} {
     all.emplace_back(this,std::forward<Name>(name));
   }
+
+  template <typename C>
+  binner(std::tuple<typename Ax::axis...>&& axes, C&& bins)
+  : _axes(axes), _bins(std::forward<C>(bins)) { }
 
   binner(const binner& o): _axes(o._axes), _bins(o._bins) { }
   binner(binner&& o): _axes(std::move(o._axes)), _bins(std::move(o._bins)) { }

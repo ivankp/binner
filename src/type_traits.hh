@@ -62,9 +62,22 @@ template <typename T, T... Ints>
 struct is_integer_sequence<std::integer_sequence<T,Ints...>>: std::true_type { };
 #endif
 
-// Tuple of same types **********************************************
+// Tuple ************************************************************
 
 #ifdef _GLIBCXX_TUPLE
+template <size_t... I, typename... T>
+auto make_ref_subtuple(std::tuple<T...>& t, std::index_sequence<I...>) {
+  return std::tie( std::get<I>(t)... );
+}
+
+template <typename Tup, typename Elems> struct subtuple;
+template <typename... T, size_t... I>
+struct subtuple<std::tuple<T...>,std::index_sequence<I...>> {
+  using type = std::tuple<std::tuple_element_t<I,std::tuple<T...>>...>;
+};
+template <typename Tup, typename Elems>
+using subtuple_t = typename subtuple<Tup,Elems>::type;
+
 namespace detail {
 template <typename T, typename S> struct tuple_of_same_impl { };
 template <typename T, size_t... I>

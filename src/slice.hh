@@ -3,26 +3,11 @@
 
 #include "binner.hh"
 #include <memory>
+#include <functional>
 
 namespace ivanp {
 
-template <typename Axis>
-auto make_shared_vector_of_edges(const Axis& axis) {
-  using vec_t = std::vector<typename Axis::edge_type>;
-  const auto n = axis.nedges();
-  vec_t vec;
-  vec.reserve(n);
-  for (typename Axis::size_type i=0; i<n; ++i)
-    vec.emplace_back(axis.edge(i));
-  return std::make_shared<const vec_t>(std::move(vec));
-}
-
 namespace detail { namespace slice {
-
-template <typename... A, size_t... I>
-auto get_edges(const std::tuple<A...>& axes, std::index_sequence<I...>) {
-  return std::make_tuple(make_shared_vector_of_edges( std::get<I>(axes) )...);
-}
 
 template <size_t N>
 class counter {
@@ -77,25 +62,6 @@ inline std::enable_if_t<I!=N-1, ivanp::axis_size_type> index(
   return *std::get<I>(ii) + std::get<I>(nn) * index<I+1>(ii,nn);
 }
 
-template <typename... A, bool... U, size_t... I>
-auto make_ranges(
-  const std::tuple<A...>& axes,
-  const std::array<ivanp::axis_size_type,sizeof...(I)>& ii,
-  std::integer_sequence<bool,U...>,
-  std::index_sequence<I...>
-) -> std::tuple<std::array<
-  typename std::tuple_element_t<I,std::tuple<std::decay_t<A>...>>::edge_type,
-  2>...>
-{
-  using namespace ivanp::seq;
-  using under = std::integer_sequence<bool,!U...>;
-  constexpr auto ImA = sizeof...(I)-sizeof...(A);
-  return { {
-    std::get<I>(axes).lower( std::get<I+ImA>(ii)+element<I,under>::value ),
-    std::get<I>(axes).upper( std::get<I+ImA>(ii)+element<I,under>::value )
-  }... };
-}
-
 template <typename T, size_t N1, size_t N2, size_t... I1, size_t... I2>
 inline auto cat_cptr(
   const std::array<T,N1>& arr1,
@@ -114,35 +80,68 @@ inline std::array<T,N> sort(std::array<T,N> arr, std::index_sequence<I...>) {
   return { std::get<I>(arr)... };
 }
 
-template <typename Bin, typename Ax, typename Head, typename Tail>
-struct binner_slice;
-template <typename Bin, typename... Ax, size_t... IH, size_t... IT>
-struct binner_slice<Bin, std::tuple<Ax...>,
-  std::index_sequence<IH...>, std::index_sequence<IT...>
-> {
-  using axes_tuple = std::tuple<Ax...>;
+} // end namespace slice
+} // end namespace detail
 
-  using ranges_type = std::tuple<std::array<
-    typename std::tuple_element_t<IT,axes_tuple>::edge_type, 2>...>;
-  using edges_type = std::tuple<
-    std::shared_ptr<const std::vector<
-      typename std::tuple_element_t<IH,axes_tuple>::edge_type
-    >>...>;
-  using bins_type = std::vector<const Bin*>;
+template <size_t D, typename Bin, typename Ax> struct binner_slice;
+template <size_t D, typename Bin, typename... Ax>
+class binner_slice<D, Bin, std::tuple<Ax...>> {
+  // types ----------------------------------------------------------
+  using head = std::make_index_sequence<D>;
+  using tail = seq::make_index_range<D,sizeof...(Ax)>;
 
-  constexpr static auto n_dim = sizeof...(IH);
-  constexpr static auto n_extra_dim = sizeof...(IT);
+  using specs = std::tuple<Ax...>;
+  using specs_head = subtuple_t<specs,head>;
+  using specs_tail = subtuple_t<specs,tail>;
 
-  ranges_type ranges;
-  edges_type  edges;
-  bins_type   bins;
-
+  using tail_indices = std::array<ivanp::axis_size_type,tail::size()>;
   template <size_t I>
-  const auto& get_edges() const noexcept { return *std::get<I>(edges); }
+  using under = typename std::tuple_element_t<I,specs>::under;
 
-  template <typename... L>
-  struct name_proxy {
-    static_assert(sizeof...(L) <= sizeof...(IT),
+  template <typename> struct axes_crefs_from_specs;
+  template <typename... T> struct axes_crefs_from_specs<std::tuple<T...>> {
+    using type = std::tuple<const typename T::axis&...>;
+  };
+  using axes_crefs = typename axes_crefs_from_specs<specs>::type;
+
+  template <typename> struct edges_from_specs;
+  template <typename... T> struct edges_from_specs<std::tuple<T...>> {
+    using type = std::tuple<std::array<typename T::axis::edge_ptype,2>...>;
+  };
+
+  template <typename> struct cref_axis_specs;
+  template <typename... T> struct cref_axis_specs<std::tuple<T...>> {
+    using type = std::tuple< axis_spec<
+      const typename T::axis&,
+      T::under::value, T::over::value, T::excep::value >... >;
+  };
+
+public:
+  // binner with reference to axes and bins
+  using binner_type = binner< std::reference_wrapper<const Bin>, 
+    typename cref_axis_specs<specs_head>::type >;
+  using container_type = std::vector<std::reference_wrapper<const Bin>>;
+
+private:
+  // members --------------------------------------------------------
+  typename edges_from_specs<specs_tail>::type _ranges;
+  binner_type _slice;
+
+  // constructor impl -----------------------------------------------
+  template <size_t... IH, size_t... IT>
+  binner_slice( const axes_crefs& axes, const tail_indices& ii,
+    container_type&& bins,
+    std::index_sequence<IH...>, std::index_sequence<IT...>
+  ) : _ranges{ {
+      std::get<IT>(axes).lower( std::get<IT-D>(ii) + !under<IT>::value ),
+      std::get<IT>(axes).upper( std::get<IT-D>(ii) + !under<IT>::value )
+    }... },
+      _slice( std::tie(std::get<IH>(axes)...), std::move(bins) )
+  { }
+
+  // name proxy struct ----------------------------------------------
+  template <typename... L> struct name_proxy {
+    static_assert(sizeof...(L) <= tail::size(),
       "cannot have more labels than dimensions");
     const binner_slice *ptr;
     std::tuple<L...> labels;
@@ -161,27 +160,38 @@ struct binner_slice<Bin, std::tuple<Ax...>,
     label() const noexcept { return std::get<I>(labels); }
 
     template <size_t I=0>
-    inline std::enable_if_t<I==sizeof...(IT), std::ostream>&
+    inline std::enable_if_t<I==tail::size(), std::ostream>&
     impl(std::ostream& os) const { return os; }
     template <size_t I=0>
-    inline std::enable_if_t<I!=sizeof...(IT), std::ostream>&
+    inline std::enable_if_t<I!=tail::size(), std::ostream>&
     impl(std::ostream& os) const {
       os << '_' << label<I>()
-         << '[' << std::get<I>(ptr->ranges)[0]
-         << ',' << std::get<I>(ptr->ranges)[1] << ')';
+         << '[' << std::get<I>(ptr->_ranges)[0]
+         << ',' << std::get<I>(ptr->_ranges)[1] << ')';
       return impl<I+1>(os);
     }
 
     friend std::ostream& operator<<( std::ostream& os, const name_proxy& p)
     { return p.impl(os); }
   };
+  // ----------------------------------------------------------------
+
+public:
+  inline binner_slice(
+    const axes_crefs& axes, const tail_indices& ii,
+    container_type&& bins
+  ) : binner_slice(axes,ii,std::move(bins),head{},tail{}) { }
+
+  inline auto& operator* () const noexcept { return  _slice; }
+  inline auto* operator->() const noexcept { return &_slice; }
+
+  // name proxy factory function ------------------------------------
   template <typename... L>
   inline auto name(L&&... labels) const noexcept -> name_proxy<L...> {
     return { this, std::forward_as_tuple(std::forward<L>(labels)...) };
   }
+  // ----------------------------------------------------------------
 };
-
-} }
 
 template <size_t D=1, // slicing into chunks of D dimensions
           typename Bin,
@@ -207,10 +217,8 @@ auto slice(
   using tail = seq::make_index_range<D,sizeof...(I)>;
   using inv  = seq::inverse_t<std::index_sequence<I...>>;
 
-  using under = std::integer_sequence<bool,
-    std::tuple_element_t<I,specs>::under::value...>;
-  using reordered_axes_types = std::tuple<
-    typename std::tuple_element_t<I,specs>::axis...>;
+  using reordered_specs = std::tuple<
+    typename std::tuple_element_t<I,specs>...>;
 
   const auto& axes = hist.axes();
   const auto reordered_axes = std::tie(as_const(std::get<I>(axes))...);
@@ -219,8 +227,6 @@ auto slice(
     ( std::get<I>(axes).nbins()
       + std::tuple_element_t<I,specs>::nover::value )... );
   const auto nbins = sort(reordered_nbins, inv{});
-
-  const auto edges = get_edges(reordered_axes, head{});
 
   counter<tail::size()> tcnt(reordered_nbins, tail{});
   counter<head::size()> hcnt(reordered_nbins, head{});
@@ -231,24 +237,22 @@ auto slice(
       head{}, std::make_index_sequence<tail::size()>{}),
     inv{});
 
-  using slice_t = binner_slice<Bin, reordered_axes_types, head, tail>;
-
+  using slice_t = binner_slice<D, Bin, reordered_specs>;
   std::vector<slice_t> slices;
   slices.reserve(tcnt.size());
 
   const auto& hbins = hist.bins();
 
   for ( ; !tcnt; ++tcnt ) {
-    std::vector<const Bin*> bins;
+    // typename slice_t::binner_type::container_type bins;
+    typename slice_t::container_type bins;
     bins.reserve(n_head_bins);
     for ( ; !hcnt; ++hcnt ) {
-      bins.emplace_back(&hbins[index(ii,nbins)]);
+      bins.emplace_back(std::ref(hbins[index(ii,nbins)]));
     }
     hcnt.reset();
 
-    slices.push_back({
-      make_ranges( reordered_axes, tcnt.ii(), under{}, tail{} ),
-      edges, std::move(bins) });
+    slices.emplace_back( reordered_axes, tcnt.ii(), std::move(bins) );
   }
 
   return slices;
@@ -263,18 +267,6 @@ template <size_t D=1, // slicing into chunks of D dimensions
 inline auto slice( // overload for default axis order
   const binner<Bin,std::tuple<Ax...>,Container,Filler>& hist
 ) { return slice<D>(hist,std::index_sequence_for<Ax...>{}); }
-
-template <size_t D=1, // slicing into chunks of D dimensions
-          size_t... I,
-          typename Bin,
-          typename... Ax,
-          typename Container,
-          typename Filler
->
-inline auto slice( // overload for default axis order
-  const binner<Bin,std::tuple<Ax...>,Container,Filler>& hist
-) { return slice<D>(hist,std::index_sequence<I...>{}); }
-
 
 } // end namespace ivanp
 

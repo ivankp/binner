@@ -26,26 +26,28 @@ int main()
     bin = ++i;
   }
 
+  // test( hist.axis<0>().lower(0) )
+  // test( hist.axis<1>().lower(0) )
+
   // const auto h1 = ivanp::slice(hist);
-  // const auto h1 = ivanp::slice<1>(hist,std::index_sequence<1,2,0>{});
-  const auto h1 = ivanp::slice<1,1,2,0>(hist);
+  const auto h1 = ivanp::slice<1>(hist,std::index_sequence<1,2,0>{});
 
   test( sizeof(decltype(h1)::value_type) )
 
+  cout << std::setprecision(3);
   for (const auto& h : h1) {
-    cout << std::setprecision(3);
     cout << h.name("var") << endl;
 
-    cout << "nbins = " << h.bins.size() << endl;
+    cout << "nbins = " << h->nbins_total() << endl;
 
     cout << "edges";
-    for (const auto e : h.get_edges<0>()) cout << ' ' << e;
-    // cout << "\nedges";
-    // for (const auto e : h.get_edges<1>()) cout << ' ' << e;
+    const auto& axis = h->axis();
+    for (ivanp::axis_size_type i=0; i<axis.nedges(); ++i)
+      cout << ' ' << axis.edge(i);
     cout << endl;
 
     cout << "bins";
-    for (const auto b : h.bins) cout << ' ' << *b;
+    for (const auto b : h->bins()) cout << ' ' << b.get();
     cout << endl;
     cout << endl;
   }
