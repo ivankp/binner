@@ -120,7 +120,6 @@ public:
   // binner with reference to axes and bins
   using binner_type = binner< std::reference_wrapper<const Bin>, 
     typename cref_axis_specs<specs_head>::type >;
-  using container_type = std::vector<std::reference_wrapper<const Bin>>;
 
 private:
   // members --------------------------------------------------------
@@ -130,7 +129,7 @@ private:
   // constructor impl -----------------------------------------------
   template <size_t... IH, size_t... IT>
   binner_slice( const axes_crefs& axes, const tail_indices& ii,
-    container_type&& bins,
+    typename binner_type::container_type&& bins,
     std::index_sequence<IH...>, std::index_sequence<IT...>
   ) : _ranges{ {
       std::get<IT>(axes).lower( std::get<IT-D>(ii) + !under<IT>::value ),
@@ -179,7 +178,7 @@ private:
 public:
   inline binner_slice(
     const axes_crefs& axes, const tail_indices& ii,
-    container_type&& bins
+    typename binner_type::container_type&& bins
   ) : binner_slice(axes,ii,std::move(bins),head{},tail{}) { }
 
   inline auto& operator* () const noexcept { return  _slice; }
@@ -244,8 +243,7 @@ auto slice(
   const auto& hbins = hist.bins();
 
   for ( ; !tcnt; ++tcnt ) {
-    // typename slice_t::binner_type::container_type bins;
-    typename slice_t::container_type bins;
+    typename slice_t::binner_type::container_type bins;
     bins.reserve(n_head_bins);
     for ( ; !hcnt; ++hcnt ) {
       bins.emplace_back(std::ref(hbins[index(ii,nbins)]));
