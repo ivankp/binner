@@ -1,28 +1,48 @@
-TESTS := $(patsubst %.cc,%,$(wildcard test/*.cc))
+STD := -std=c++14
+DF := $(STD) -Isrc
+CF := $(STD) -Wall -Isrc -O3 -fmax-errors=2
+LF := $(STD)
 
-DEP := $(TESTS:test/%=.dep/%.d)
-ASM := $(TESTS:test/%=%.s)
+NPROC := $(shell nproc --all)
 
-CXXFLAGS := -std=c++14 -Wall -O3 -Isrc -fmax-errors=3
+ROOT_CFLAGS := -Wno-deprecated-declarations -pthread -m64
+ROOT_CFLAGS += -I$(shell root-config --incdir)
+ROOT_LIBS   := $(shell root-config --libs)
 
-all: $(TESTS)
+C_slice_root := $(ROOT_CFLAGS)
+L_slice_root := $(ROOT_LIBS)
 
-#Don't create dependencies when cleaning
-ifeq (0, $(words $(findstring $(MAKECMDGOALS), clean)))
--include $(DEP)
+SRC := test
+BIN := test
+BLD := .build
+
+SRCS := $(shell find $(SRC) -maxdepth 1 -type f -name '*.cc')
+DEPS := $(patsubst $(SRC)%.cc,$(BLD)%.d,$(SRCS))
+
+GREP_EXES := grep -rl '^ *int \+main *(' $(SRC)
+EXES := $(patsubst $(SRC)%.cc,$(BIN)%,$(shell $(GREP_EXES)))
+
+NODEPS := clean
+.PHONY: all clean
+
+all: $(EXES)
+
+#Don't create dependencies when we're cleaning, for instance
+ifeq (0, $(words $(findstring $(MAKECMDGOALS), $(NODEPS))))
+-include $(DEPS)
 endif
 
-$(TESTS): test/%: | .dep/%.d
-	g++ $(CXXFLAGS) $< -o $@ $(LIBS_$*)
+$(DEPS): $(BLD)/%.d: $(SRC)/%.cc | $(BLD)
+	$(CXX) $(DF) -MM -MT '$(@:.d=.o)' $< -MF $@
 
-$(DEP): .dep/%.d: test/%.cc | .dep
-	g++ -std=c++14 -Isrc -MM -MT '$(<:%.cc=%)' $< -MF $@
+$(BLD)/%.o: | $(BLD)
+	$(CXX) $(CF) $(C_$*) -c $(filter %.cc,$^) -o $@
 
-$(ASM): %.s: test/%.cc
-	g++ -S -fverbose-asm $(CXXFLAGS) $< -o $@
+$(BIN)/%: $(BLD)/%.o | $(BIN)
+	$(CXX) $(LF) $(filter %.o,$^) -o $@ $(L_$*)
 
-.dep:
+$(BLD) $(BIN):
 	mkdir $@
 
 clean:
-	@rm -rfv .dep $(TESTS)
+	@rm -rfv $(BLD) $(EXES)

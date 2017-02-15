@@ -118,8 +118,9 @@ class binner_slice<D, Bin, std::tuple<Ax...>> {
 
 public:
   // binner with reference to axes and bins
-  using binner_type = binner< std::reference_wrapper<const Bin>, 
-    typename cref_axis_specs<specs_head>::type >;
+  using binner_type = binner< Bin,
+    typename cref_axis_specs<specs_head>::type,
+    std::vector<std::reference_wrapper<const Bin>> >;
 
 private:
   // members --------------------------------------------------------

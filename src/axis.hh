@@ -87,6 +87,8 @@ public:
   virtual edge_type max() const = 0;
   virtual edge_ptype lower(size_type i) const = 0;
   virtual edge_ptype upper(size_type i) const = 0;
+
+  virtual bool is_uniform() const = 0;
 };
 
 // Blank axis base ==================================================
@@ -197,6 +199,8 @@ public:
 
   inline const container_type& edges() const { return _edges; }
 
+  constexpr bool is_uniform() const noexcept { return false; }
+
 };
 
 // Uniform Axis =====================================================
@@ -268,6 +272,8 @@ public:
   inline size_type operator[](const T& x) const noexcept
   { return find_bin(x); }
 
+  constexpr bool is_uniform() const noexcept { return true; }
+
 };
 
 // Index Axis =======================================================
@@ -335,6 +341,8 @@ public:
   constexpr size_type operator[](const T& x) const noexcept
   { return find_bin(x); }
 
+  constexpr bool is_uniform() const noexcept { return true; }
+
 };
 
 // Indirect Axis ====================================================
@@ -389,6 +397,8 @@ public:
   inline edge_type max() const { return _ref->max(); }
   inline edge_ptype lower(size_type i) const { return _ref->lower(i); }
   inline edge_ptype upper(size_type i) const { return _ref->upper(i); }
+
+  inline bool is_uniform() const noexcept { return _ref->is_uniform(); }
 
 };
 
@@ -499,9 +509,22 @@ public:
   inline size_type vfind_bin(edge_type x) const noexcept
   { return find_bin(x); }
 
+  constexpr bool is_uniform() const noexcept { return false; }
+
 };
 
 // ==================================================================
+
+template <typename T, typename Axis>
+auto vector_of_edges(const Axis& axis) {
+  const auto n = axis.nedges();
+  std::vector<T> edges;
+  edges.reserve(n);
+  for (typename Axis::size_type i=0; i<n; ++i)
+    edges.emplace_back(axis.edge(i));
+  return edges;
+}
+
 } // end namespace ivanp
 
 #endif

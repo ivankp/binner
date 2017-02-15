@@ -1,8 +1,8 @@
-/.dep
-/*.s
+/.build
 /test/axis
 /test/find_bin
 /test/binner
 /test/slice
+/test/slice_root
 /test/seq_traits
 .*.swp
