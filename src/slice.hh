@@ -149,14 +149,14 @@ private:
     template <size_t I, typename = void> struct label_type;
     template <size_t I>
     struct label_type<I,std::enable_if_t<(I<sizeof...(L))>> {
-      using type = decltype(std::get<I>(labels));
+      using type = std::tuple_element_t<I,decltype(labels)>;
     };
 
     template <size_t I>
     std::enable_if_t<!(I<sizeof...(L)),const char*>
     label() const noexcept { return ""; }
     template <size_t I>
-    std::enable_if_t<(I<sizeof...(L)),typename label_type<I>::type>
+    std::enable_if_t<(I<sizeof...(L)),const typename label_type<I>::type&>
     label() const noexcept { return std::get<I>(labels); }
 
     template <size_t I=0>

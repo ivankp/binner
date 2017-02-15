@@ -132,7 +132,7 @@ template <bool Use, typename Bins, typename F>
 inline std::enable_if_t<!Use> set_num(TH1* h, const Bins& bins, F get) { }
 template <bool Use, typename Bins, typename F>
 inline std::enable_if_t<Use> set_num(TH1* h, const Bins& bins, F get) {
-  Double_t n_total;
+  Double_t n_total = 0;
   for (const auto& bin : bins) n_total += get.num(bin);
   h->SetEntries(n_total);
 }

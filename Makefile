@@ -19,7 +19,7 @@ BLD := .build
 SRCS := $(shell find $(SRC) -maxdepth 1 -type f -name '*.cc')
 DEPS := $(patsubst $(SRC)%.cc,$(BLD)%.d,$(SRCS))
 
-GREP_EXES := grep -rl '^ *int \+main *(' $(SRC)
+GREP_EXES := grep -rl '^ *int \+main *(' $(SRC) --exclude-dir='sandbox'
 EXES := $(patsubst $(SRC)%.cc,$(BIN)%,$(shell $(GREP_EXES)))
 
 NODEPS := clean
