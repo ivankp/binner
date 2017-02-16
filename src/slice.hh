@@ -187,8 +187,14 @@ public:
 
   // name proxy factory function ------------------------------------
   template <typename... L>
-  inline auto name(L&&... labels) const noexcept -> name_proxy<L...> {
+  inline auto name(L&&... labels) const noexcept
+  -> name_proxy<add_const_to_ref_t<L>...> {
     return { this, std::forward_as_tuple(std::forward<L>(labels)...) };
+  }
+  template <typename... L>
+  inline auto name(const std::tuple<L...>& labels) const noexcept
+  -> name_proxy<remove_rref_t<add_const_to_ref_t<L>>...> {
+    return { this, labels };
   }
   // ----------------------------------------------------------------
 };

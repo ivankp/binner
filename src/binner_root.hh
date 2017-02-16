@@ -9,7 +9,6 @@ namespace ivanp {
 namespace root {
 
 #ifdef ROOT_TH1
-
 template <typename A1>
 TH1D* make_TH(const std::string& name, const std::tuple<A1>& axes) {
   const auto& a1 = std::get<0>(axes);
@@ -20,11 +19,9 @@ TH1D* make_TH(const std::string& name, const std::tuple<A1>& axes) {
       a1.nbins(),vector_of_edges<double>(a1).data());
   }
 }
-
 #endif
 
 #ifdef ROOT_TH2
-
 template <typename A1, typename A2>
 TH2D* make_TH(const std::string& name, const std::tuple<A1,A2>& axes) {
   const auto& a1 = std::get<0>(axes);
@@ -49,11 +46,9 @@ TH2D* make_TH(const std::string& name, const std::tuple<A1,A2>& axes) {
     }
   }
 }
-
 #endif
 
 #ifdef ROOT_TH3
-
 template <typename A1, typename A2, typename A3>
 TH3D* make_TH(const std::string& name, const std::tuple<A1,A2,A3>& axes) {
   const auto& a1 = std::get<0>(axes);
@@ -71,20 +66,22 @@ TH3D* make_TH(const std::string& name, const std::tuple<A1,A2,A3>& axes) {
       a3.nbins(),vector_of_edges<double>(a3).data());
   }
 }
-
 #endif
+
+template <typename Bin>
+struct bin_converter {
+  inline const auto& weight(const Bin& b)
+    const noexcept(noexcept(b.weight())) { return b.weight(); }
+  inline const auto& sumw2(const Bin& b)
+    const noexcept(noexcept(b.sumw2())) { return b.sumw2(); }
+  inline const auto& num(const Bin& b)
+    const noexcept(noexcept(b.num())) { return b.num(); }
+};
 
 namespace detail {
 
-template <typename Bin>
-struct bin_get {
-  inline const auto& weight(const Bin& b) const noexcept { return b.w; }
-  inline const auto&  sumw2(const Bin& b) const noexcept { return b.w2; }
-  inline const auto&    num(const Bin& b) const noexcept { return b.n; }
-};
-
 template <typename F, typename Bin>
-class bin_get_traits {
+class bin_converter_traits {
   template <typename, typename = void>
   struct _has_weight : std::false_type { };
   template <typename T> struct _has_weight<T,
@@ -140,34 +137,66 @@ inline std::enable_if_t<Use> set_num(TH1* h, const Bins& bins, F get) {
 } // end namespace detail
 
 template <typename Bin, typename... Ax, typename Container, typename Filler,
-          typename F = detail::bin_get<Bin> >
+          typename F = bin_converter<Bin> >
 auto* to_root(
   const binner<Bin,std::tuple<Ax...>,Container,Filler>& hist,
   const std::string& name,
-  F get = F{}
+  F convert = F{}
 ) {
   auto *h = make_TH(name.c_str(),hist.axes());
 
-  using bin_traits = detail::bin_get_traits<F,Bin>;
+  using traits = detail::bin_converter_traits<F,Bin>;
 
-  detail::set_weight<bin_traits::has_weight>(h,hist.bins(),get);
-  detail::set_sumw2 <bin_traits::has_sumw2 >(h,hist.bins(),get);
-  detail::set_num   <bin_traits::has_num   >(h,hist.bins(),get);
+  detail::set_weight<traits::has_weight>(h, hist.bins(), convert);
+  detail::set_sumw2 <traits::has_sumw2 >(h, hist.bins(), convert);
+  detail::set_num   <traits::has_num   >(h, hist.bins(), convert);
 
   return h;
 };
 
-template <size_t D, typename Bin, typename... Ax, typename... Labels>
+template <size_t D, typename Bin, typename... Ax, typename... Labels,
+          typename F = bin_converter<Bin> >
 auto* to_root(
   const binner_slice<D, Bin, std::tuple<Ax...>>& hist,
   const std::string& name,
-  Labels&&... labels
+  const std::tuple<Labels...>& labels,
+  F convert = F{}
 ) {
   std::stringstream ss;
   ss.precision(3);
-  ss << name << hist.name(std::forward<Labels>(labels)...);
+  ss << name << hist.name(labels);
   return to_root(*hist,ss.str());
 };
+
+template <size_t D, typename Seq,
+          typename Bin, typename... Ax, typename Container, typename Filler,
+          typename... Labels, typename F = bin_converter<Bin> >
+auto slice_to_root(
+  const binner_slice<D, Bin, std::tuple<Ax...>>& hist,
+  const std::string& name,
+  const std::tuple<Labels...>& labels,
+  F convert = F{}
+) {
+  std::vector<TH1*> hh;
+  for (const auto& h : slice<D>(hist,Seq{}))
+    hh.push_back( to_root(h,name,labels,convert) );
+  return hh;
+}
+
+template <size_t D=1,
+          typename Bin, typename... Ax, typename Container, typename Filler,
+          typename... Labels, typename F = bin_converter<Bin> >
+auto slice_to_root(
+  const binner<Bin,std::tuple<Ax...>,Container,Filler>& hist,
+  const std::string& name,
+  const std::tuple<Labels...>& labels,
+  F convert = F{}
+) {
+  std::vector<TH1*> hh;
+  for (const auto& h : slice<D>(hist))
+    hh.push_back( to_root(h,name,labels,convert) );
+  return hh;
+}
 
 } // end namespace root
 } // end namespace ivanp
