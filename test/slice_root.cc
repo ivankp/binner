@@ -16,15 +16,13 @@ using std::endl;
 using std::setw;
 using namespace ivanp::root;
 
-namespace ivanp { namespace root { namespace detail {
-
-template <> struct bin_get<double> {
+namespace ivanp { namespace root {
+template <> struct bin_converter<double> {
   inline const auto weight(const double& b) const noexcept { return b; }
   // inline const auto  sumw2(const double& b) const noexcept { return 1; }
   // inline const auto    num(const double& b) const noexcept { return 2; }
 };
-
-}}}
+}}
 
 int main()
 {

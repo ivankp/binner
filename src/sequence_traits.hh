@@ -4,6 +4,12 @@
 namespace ivanp {
 namespace seq {
 
+// is_integer_sequence **********************************************
+
+template <typename> struct is_integer_sequence: std::false_type { };
+template <typename T, T... Ints>
+struct is_integer_sequence<std::integer_sequence<T,Ints...>>: std::true_type { };
+
 // increment ********************************************************
 
 template <typename Seq, typename Seq::value_type Inc> struct increment;
