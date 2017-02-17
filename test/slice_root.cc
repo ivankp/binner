@@ -18,16 +18,16 @@ using namespace ivanp::root;
 
 namespace ivanp { namespace root {
 template <> struct bin_converter<double> {
-  inline const auto weight(const double& b) const noexcept { return b; }
-  // inline const auto  sumw2(const double& b) const noexcept { return 1; }
-  // inline const auto    num(const double& b) const noexcept { return 2; }
+  inline auto weight(const double& b) const noexcept { return b; }
+  // inline auto  sumw2(const double& b) const noexcept { return 1; }
+  // inline auto    num(const double& b) const noexcept { return 2; }
 };
 }}
 
 int main()
 {
   ivanp::binner<double, std::tuple<
-    ivanp::axis_spec<ivanp::uniform_axis<double>,false,false>,
+    ivanp::axis_spec<ivanp::uniform_axis<double>/*,false,false*/>,
     ivanp::axis_spec<ivanp::uniform_axis<int>>,
     ivanp::axis_spec<ivanp::uniform_axis<float>/*,false,false*/>
   >> hist( {3,0,10}, {5,-2,3}, {2,0,5} );
@@ -42,7 +42,7 @@ int main()
   cout.precision(3);
 
   for (const auto& h : h1) {
-    const auto* th = to_root(h,"hist",0);
+    const auto* th = to_root(h,"hist",std::forward_as_tuple(0));
 
     test(th->ClassName())
     test(th->GetName())
