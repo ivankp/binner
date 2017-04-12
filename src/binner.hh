@@ -6,6 +6,7 @@
 #include <tuple>
 #include <array>
 #include <vector>
+#include <iterator>
 #include <stdexcept>
 
 #include "axis.hh"
@@ -70,16 +71,56 @@ private:
     const std::array<T,N>& args
   ) { return axis_type<I>({std::get<A>(args)...}); }
 
-  template <size_t I>
-  constexpr std::enable_if_t<I!=0,size_type> nbins_total_impl() const noexcept{
-    return ( axis<I>().nbins() + axis_spec<I>::nover::value
-      ) * nbins_total_impl<I-1>();
-  }
-  template <size_t I>
-  constexpr std::enable_if_t<I==0,size_type> nbins_total_impl() const noexcept{
-    return ( axis<0>().nbins() + axis_spec<0>::nover::value );
+public:
+  template <unsigned I=0>
+  constexpr const auto& axis() const noexcept { return std::get<I>(_axes); }
+  constexpr const auto& axes() const noexcept { return _axes; }
+
+  template <unsigned I=0>
+  constexpr size_type nbins() const noexcept {
+    static_assert( I < naxes, "Axis index out of range" );
+    return axis<I>().nbins() + axis_spec<I>::nover::value;
   }
 
+  template <unsigned I> // including I
+  constexpr std::enable_if_t<I!=0,size_type> nbins_left() const noexcept {
+    return nbins<I>() * nbins_left<I-1>();
+  }
+  template <unsigned I> // including I
+  constexpr std::enable_if_t<I==0,size_type> nbins_left() const noexcept {
+    return nbins<I>();
+  }
+  template <unsigned I> // excluding I
+  constexpr std::enable_if_t<I!=0,size_type> nbins_before() const noexcept {
+    return nbins_left<I-1>();
+  }
+  template <unsigned I> // excluding I
+  constexpr std::enable_if_t<I==0,size_type> nbins_before() const noexcept {
+    return 1;
+  }
+
+  template <unsigned I> // including I
+  constexpr std::enable_if_t<I!=naxes-1,size_type> nbins_right() const noexcept {
+    return nbins<I>() * nbins_right<I+1>();
+  }
+  template <unsigned I> // including I
+  constexpr std::enable_if_t<I==naxes-1,size_type> nbins_right() const noexcept {
+    return nbins<I>();
+  }
+  template <unsigned I> // excluding I
+  constexpr std::enable_if_t<(I<naxes-1),size_type> nbins_after() const noexcept {
+    return nbins_right<I+1>();
+  }
+  template <unsigned I> // excluding I
+  constexpr std::enable_if_t<(I>=naxes-1),size_type> nbins_after() const noexcept {
+    return 1;
+  }
+
+  constexpr size_type nbins_total() const noexcept {
+    return nbins_left<naxes-1>();
+  }
+
+private:
   template <size_t I, typename A = axis_spec<I>>
   constexpr std::enable_if_t<A::under::value,bool>
   guard_under(size_type bin) const noexcept { return false; }
@@ -184,14 +225,14 @@ public:
 
   binner(const binner& o): _axes(o._axes), _bins(o._bins) { }
   binner(binner&& o): _axes(std::move(o._axes)), _bins(std::move(o._bins)) { }
-  binner& operator=(const binner& o) {
-    _axes = o._axes;
-    _bins = o._bins;
+  binner& operator=(const binner& rhs) {
+    _axes = rhs._axes;
+    _bins = rhs._bins;
     return *this;
   }
-  binner& operator=(binner&& o) {
-    _axes = std::move(o._axes);
-    _bins = std::move(o._bins);
+  binner& operator=(binner&& rhs) {
+    _axes = std::move(rhs._axes);
+    _bins = std::move(rhs._bins);
     return *this;
   }
   binner(const std::string& name, const binner& o)
@@ -199,19 +240,14 @@ public:
     all.emplace_back(this,name);
   }
 
-  template <unsigned I=0>
-  constexpr const auto& axis() const noexcept {
-    return std::get<I>(_axes);
-  }
-  constexpr const auto& axes() const noexcept { return _axes; }
-
-  template <unsigned I=0>
-  constexpr size_type nbins() const noexcept {
-    return axis<I>().nbins() + axis_spec<I>::nover::value;
-  }
-
-  constexpr size_type nbins_total() const noexcept {
-    return nbins_total_impl<naxes-1>();
+  binner& operator+=(const binner& rhs) {
+    if (nbins_total() != rhs.nbins_total()) throw std::length_error(
+      "binner::operator+=: nbins_total does not match");
+    for (size_type i=nbins_total(); i!=0;) {
+      --i;
+      _bins[i] += rhs._bins[i];
+    }
+    return *this;
   }
 
   inline const container_type& bins() const noexcept { return _bins; }
@@ -255,6 +291,11 @@ public:
     // NOT safe for out of range indices
     return fill_bin(_bins[index(ia)], std::forward<Args>(args)...);
   }
+  template <typename... Args>
+  inline size_type fill_bin_check(size_type bin, Args&&... args) {
+    if (bin == size_type(-1)) return bin;
+    return fill_bin(bin,std::forward<Args>(args)...);
+  }
 
   template <typename... Args>
   inline std::enable_if_t<sizeof...(Args)==naxes,size_type>
@@ -281,21 +322,62 @@ public:
   }
 
   // Algorithms -----------------------------------------------------
-  void integrate_right() {
-    auto b=++_bins.begin();
-    const auto end = _bins.end();
-    for ( ; b!=end; ++b) (*b) += (*(b-1));
+  template <unsigned I=0> void integrate_right() {
+    const size_type nb = nbins_before<I>();
+    const size_type n  = nbins<I>()-1;
+    const size_type na = nbins_after<I>();
+
+    auto begin = _bins.begin();
+    for (size_type a=na; a; --a) {
+      for (size_type b=nb; b;) { --b;
+        auto prev = begin;
+        for (size_type i=n; i; --i) {
+          auto it = std::next(prev,nb);
+          *it += *prev;
+          prev = it;
+        }
+        if (b) ++begin;
+        else begin = std::next(prev);
+      }
+    }
   }
-  void integrate_left() {
-    auto b=++_bins.rbegin();
-    const auto end = _bins.rend();
-    for ( ; b!=end; ++b) (*b) += (*(b-1));
+  template <unsigned I=0> void integrate_left() {
+    const size_type nb = nbins_before<I>();
+    const size_type n  = nbins<I>()-1;
+    const size_type na = nbins_after<I>();
+
+    auto begin = _bins.rbegin();
+    for (size_type a=na; a; --a) {
+      for (size_type b=nb; b;) { --b;
+        auto prev = begin;
+        for (size_type i=n; i; --i) {
+          auto it = std::next(prev,nb);
+          *it += *prev;
+          prev = it;
+        }
+        if (b) ++begin;
+        else begin = std::next(prev);
+      }
+    }
   }
 };
 
 template <typename B, typename... A, typename C, typename F>
 std::vector<typename binner<B,std::tuple<A...>,C,F>::named_ptr_type>
 binner<B,std::tuple<A...>,C,F>::all;
+
+// ##################################################################
+
+// Metafunctions
+
+template <typename Binner, typename... AxesSpecs> struct add_axes;
+template <typename Bin, typename... Ax, typename Container, typename Filler,
+          typename... AxesSpecs>
+struct add_axes<binner<Bin,std::tuple<Ax...>,Container,Filler>,AxesSpecs...> {
+  using type = binner<Bin,std::tuple<Ax...,AxesSpecs...>,Container,Filler>;
+};
+template <typename Binner, typename... AxesSpecs>
+using add_axes_t = typename add_axes<Binner,AxesSpecs...>::type;
 
 } // end namespace ivanp
 
