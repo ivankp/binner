@@ -367,6 +367,17 @@ public:
       }
     }
   }
+
+  template <unsigned I=0> void integral_right() {
+    auto integrated = *this;
+    integrated.integrate_right<I>();
+    return std::move(integrated);
+  }
+  template <unsigned I=0> void integral_left() {
+    auto integrated = *this;
+    integrated.integrate_left<I>();
+    return std::move(integrated);
+  }
 };
 
 template <typename B, typename... A, typename C, typename F>
